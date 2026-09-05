@@ -163,17 +163,16 @@ export const StoreProvider = ({ children }) => {
   // 1. Core State with LocalStorage initialization
   const [products, setProducts] = useState(() => {
     try {
-      const deletedSet = new Set(getDeletedProductIds());
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter((p) => p && p.id && !deletedSet.has(p.id));
+          return parsed;
         }
       }
-      return INITIAL_PRODUCTS.filter((p) => p && p.id && !deletedSet.has(p.id));
+      return [];
     } catch {
-      return INITIAL_PRODUCTS;
+      return [];
     }
   });
 
@@ -696,32 +695,10 @@ export const StoreProvider = ({ children }) => {
         if (!isMounted) return;
 
         if (cloudProducts && Array.isArray(cloudProducts)) {
-          const deletedSet = new Set(getDeletedProductIds());
-
-          // Clean up any deleted products that still exist in cloud
-          cloudProducts.forEach((p) => {
-            if (p && p.id && deletedSet.has(p.id)) {
-              deleteProductFromCloud(p.id);
-            }
-          });
-
-          const activeCloud = cloudProducts.filter((p) => p && p.id && !deletedSet.has(p.id));
-
           setProducts((prev) => {
-            const prodMap = new Map();
-            // 1. Put all valid cloud products
-            activeCloud.forEach((p) => prodMap.set(p.id, p));
-            // 2. Put local products that are not deleted and not in cloud yet
-            prev.forEach((p) => {
-              if (p && p.id && !deletedSet.has(p.id) && !prodMap.has(p.id)) {
-                prodMap.set(p.id, p);
-                saveProductToCloud(p);
-              }
-            });
-            const merged = Array.from(prodMap.values());
-            if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
-            safeSetStorage(STORAGE_KEYS.PRODUCTS, merged);
-            return merged;
+            if (JSON.stringify(prev) === JSON.stringify(cloudProducts)) return prev;
+            safeSetStorage(STORAGE_KEYS.PRODUCTS, cloudProducts);
+            return cloudProducts;
           });
         }
 
@@ -729,31 +706,21 @@ export const StoreProvider = ({ children }) => {
           const normalizedCloud = cloudOrders
             .filter((o) => o && o.id && !DEMO_ORDER_IDS.has(o.id))
             .map(normalizeOrder)
-            .filter(Boolean);
+            .filter(Boolean)
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
           setOrders((prev) => {
-            const orderMap = new Map();
-            // 1. Put all clean cloud orders
-            normalizedCloud.forEach((o) => orderMap.set(o.id, o));
-            // 2. Put local orders (preserve any local new orders not yet in cloud, excluding demo orders)
-            prev.forEach((o) => {
-              if (o && o.id && !DEMO_ORDER_IDS.has(o.id) && !orderMap.has(o.id)) {
-                orderMap.set(o.id, o);
-              }
-            });
-            const merged = Array.from(orderMap.values()).sort(
-              (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-            );
-            if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
-            return merged;
+            if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
+            safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
+            return normalizedCloud;
           });
         }
-
-
 
         if (cloudSettings && Object.keys(cloudSettings).length > 0) {
           setSettings((prev) => {
             const merged = { ...prev, ...cloudSettings };
             if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+            safeSetStorage(STORAGE_KEYS.SETTINGS, merged);
             return merged;
           });
         }
@@ -762,11 +729,26 @@ export const StoreProvider = ({ children }) => {
       }
     };
 
+    // Instant initial sync on page load
     syncWithCloud();
-    const interval = setInterval(syncWithCloud, 20000); // 20s polling interval
+
+    // 6-second live polling interval for seamless multi-device updates
+    const interval = setInterval(syncWithCloud, 6000);
+
+    // Sync immediately whenever user switches tabs or focuses window
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncWithCloud();
+      }
+    };
+    window.addEventListener("focus", syncWithCloud);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      window.removeEventListener("focus", syncWithCloud);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
