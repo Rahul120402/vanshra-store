@@ -373,8 +373,22 @@ export const StoreProvider = ({ children }) => {
 
         if (cloudProducts && cloudProducts.length > 0) {
           setProducts((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(cloudProducts)) return prev;
-            return cloudProducts;
+            const prodMap = new Map();
+            // 1. First add all products from cloud
+            cloudProducts.forEach((p) => {
+              if (p && p.id) prodMap.set(p.id, p);
+            });
+            // 2. Preserve any local products created on this device not yet returned by cloud
+            prev.forEach((p) => {
+              if (p && p.id && !prodMap.has(p.id)) {
+                prodMap.set(p.id, p);
+                // Attempt to auto-sync to cloud
+                saveProductToCloud(p);
+              }
+            });
+            const merged = Array.from(prodMap.values());
+            if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+            return merged;
           });
         } else if (cloudProducts && cloudProducts.length === 0) {
           // Seed cloud database with initial catalog

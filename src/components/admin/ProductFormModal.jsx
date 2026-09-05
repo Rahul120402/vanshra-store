@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { STANDARD_SIZES } from "../../data/initialData";
+import { compressImage } from "../../utils/formatters";
 import { 
   X, 
   Plus, 
@@ -102,18 +103,34 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
     }));
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
+    if (!files.length) return;
+
+    showToast("Optimizing photo for cloud storage...", "info", 2000);
+    const compressedImages = [];
+    for (const file of files) {
+      try {
+        const compressed = await compressImage(file);
+        if (compressed) {
+          compressedImages.push(compressed);
+        }
+      } catch (err) {
+        console.warn("Compression fallback:", err);
+      }
+    }
+
+    if (compressedImages.length > 0) {
+      setFormData((prev) => {
+        const existing = prev.images.filter((img) => img.trim() !== "");
+        return {
           ...prev,
-          images: prev.images[0] === "" ? [reader.result] : [...prev.images, reader.result]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+          images: existing.length === 0 ? compressedImages : [...existing, ...compressedImages]
+        };
+      });
+      showToast("Photo uploaded & compressed successfully!", "success", 2500);
+    }
+    e.target.value = "";
   };
 
   const handleAddColor = () => {

@@ -60,3 +60,47 @@ export const formatMonthYear = (monthKeyOrDateString) => {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 };
 
+// High-speed browser canvas image optimizer (compresses 5MB+ photos to <150KB for fast cloud saving)
+export const compressImage = (file, maxWidth = 1000, maxHeight = 1200, quality = 0.75) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type || !file.type.startsWith("image/")) {
+      resolve("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let compressed = canvas.toDataURL("image/webp", quality);
+        if (!compressed.startsWith("data:image/webp")) {
+          compressed = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(compressed);
+      };
+      img.onerror = () => {
+        resolve(event.target?.result || "");
+      };
+      img.src = event.target?.result;
+    };
+    reader.onerror = () => {
+      resolve("");
+    };
+    reader.readAsDataURL(file);
+  });
+};
+

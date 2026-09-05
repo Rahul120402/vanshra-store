@@ -129,6 +129,11 @@ export const saveProductToCloud = async (product) => {
       body
     });
 
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[VANSHRA Cloud] Save product "${product.name || docId}" failed (${res.status}):`, errText);
+    }
+
     return res.ok;
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to save product:", err);
