@@ -25,7 +25,7 @@ const MainContent = () => {
     settings, 
     isAdminAuthenticated, 
     isAdminAuthModalOpen, 
-    setIsAdminAuthModalOpen 
+    closeAdminAuth 
   } = useStore();
 
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
@@ -174,7 +174,7 @@ const MainContent = () => {
       {/* Secret Store Owner PIN Login Modal */}
       <AdminAuthModal
         isOpen={isAdminAuthModalOpen}
-        onClose={() => setIsAdminAuthModalOpen(false)}
+        onClose={closeAdminAuth}
       />
 
       {/* Floating WhatsApp Help with Breathing Pulse */}

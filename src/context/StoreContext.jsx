@@ -318,6 +318,86 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  // Dedicated Modal Opener and Closer Helpers (Handles URL Hash Cleanly)
+  const openCart = () => {
+    setIsCartOpen(true);
+    if (window.location.hash !== "#cart") {
+      window.history.pushState({ modal: "cart" }, "", "#cart");
+    }
+  };
+
+  const closeCart = () => {
+    setIsCartOpen(false);
+    if (window.location.hash === "#cart") {
+      window.history.pushState(null, "", window.location.pathname + (selectedProductId ? `#product-${selectedProductId}` : ""));
+    }
+  };
+
+  const openCheckout = () => {
+    setIsCheckoutOpen(true);
+    if (window.location.hash !== "#checkout") {
+      window.history.pushState({ modal: "checkout" }, "", "#checkout");
+    }
+  };
+
+  const closeCheckout = () => {
+    setIsCheckoutOpen(false);
+    if (window.location.hash === "#checkout") {
+      window.history.pushState(null, "", window.location.pathname + (selectedProductId ? `#product-${selectedProductId}` : ""));
+    }
+  };
+
+  const openQuickView = (product) => {
+    setQuickViewProduct(product);
+    setIsQuickViewOpen(true);
+    if (window.location.hash !== "#quickview") {
+      window.history.pushState({ modal: "quickview" }, "", "#quickview");
+    }
+  };
+
+  const closeQuickView = () => {
+    setIsQuickViewOpen(false);
+    setQuickViewProduct(null);
+    if (window.location.hash === "#quickview") {
+      window.history.pushState(null, "", window.location.pathname + (selectedProductId ? `#product-${selectedProductId}` : ""));
+    }
+  };
+
+  const openSizeGuide = () => {
+    setIsSizeGuideOpen(true);
+    if (window.location.hash !== "#sizeguide") {
+      window.history.pushState({ modal: "sizeguide" }, "", "#sizeguide");
+    }
+  };
+
+  const closeSizeGuide = () => {
+    setIsSizeGuideOpen(false);
+    if (window.location.hash === "#sizeguide") {
+      window.history.pushState(null, "", window.location.pathname + (selectedProductId ? `#product-${selectedProductId}` : ""));
+    }
+  };
+
+  const openOrderTracking = () => {
+    setIsOrderTrackingOpen(true);
+    if (window.location.hash !== "#tracking") {
+      window.history.pushState({ modal: "tracking" }, "", "#tracking");
+    }
+  };
+
+  const closeOrderTracking = () => {
+    setIsOrderTrackingOpen(false);
+    if (window.location.hash === "#tracking") {
+      window.history.pushState(null, "", window.location.pathname + (selectedProductId ? `#product-${selectedProductId}` : ""));
+    }
+  };
+
+  const closeAdminAuth = () => {
+    setIsAdminAuthModalOpen(false);
+    if (window.location.hash === "#admin" && currentView !== "admin") {
+      window.history.pushState(null, "", window.location.pathname);
+    }
+  };
+
   // Dynamic URL hash, Browser History (Back / Forward / Mobile Swipe Back) & Router Sync
   useEffect(() => {
     // 1. Synchronize state with current URL hash
@@ -337,6 +417,10 @@ export const StoreProvider = ({ children }) => {
         setIsCartOpen(true);
       } else if (hash === "#tracking") {
         setIsOrderTrackingOpen(true);
+      } else if (hash === "#checkout") {
+        setIsCheckoutOpen(true);
+      } else if (hash === "#sizeguide") {
+        setIsSizeGuideOpen(true);
       } else if (!hash || hash === "#") {
         setSelectedProductId(null);
         setCurrentView("store");
@@ -345,8 +429,18 @@ export const StoreProvider = ({ children }) => {
 
     syncFromHash();
 
-    // 2. Keyboard shortcut for Admin (Ctrl+Shift+A)
+    // 2. Keyboard shortcuts (Escape to close modals, Ctrl+Shift+A for Admin)
     const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (isCheckoutOpen) closeCheckout();
+        else if (isCartOpen) closeCart();
+        else if (isQuickViewOpen) closeQuickView();
+        else if (isSizeGuideOpen) closeSizeGuide();
+        else if (isOrderTrackingOpen) closeOrderTracking();
+        else if (isAdminAuthModalOpen) closeAdminAuth();
+        else if (selectedOrderForDetail) setSelectedOrderForDetail(null);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
         e.preventDefault();
         navigateToAdmin();
@@ -1116,6 +1210,17 @@ export const StoreProvider = ({ children }) => {
         navigateToProduct,
         navigateToCategory,
         navigateToAdmin,
+        openCart,
+        closeCart,
+        openCheckout,
+        closeCheckout,
+        openQuickView,
+        closeQuickView,
+        openSizeGuide,
+        closeSizeGuide,
+        openOrderTracking,
+        closeOrderTracking,
+        closeAdminAuth,
         isAdminAuthenticated,
         isAdminAuthModalOpen,
         setIsAdminAuthModalOpen,

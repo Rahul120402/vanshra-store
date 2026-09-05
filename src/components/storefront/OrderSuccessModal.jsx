@@ -16,8 +16,7 @@ export const OrderSuccessModal = () => {
     setLatestPlacedOrder, 
     settings, 
     showToast,
-    setCurrentView,
-    setSelectedProductId 
+    navigateToHome 
   } = useStore();
   const [isCopied, setIsCopied] = useState(false);
 
@@ -25,18 +24,7 @@ export const OrderSuccessModal = () => {
 
   const handleClose = () => {
     setLatestPlacedOrder(null);
-    if (setSelectedProductId) setSelectedProductId(null);
-    if (setCurrentView) setCurrentView("store");
-
-    // Smoothly scroll directly to the products / catalog section
-    setTimeout(() => {
-      const catalogSection = document.getElementById("catalog-section");
-      if (catalogSection) {
-        catalogSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        window.scrollTo({ top: 500, behavior: "smooth" });
-      }
-    }, 100);
+    navigateToHome();
   };
 
   const handleWhatsAppSend = () => {

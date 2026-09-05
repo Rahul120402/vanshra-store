@@ -15,7 +15,8 @@ import {
 export const CartDrawer = () => {
   const {
     isCartOpen,
-    setIsCartOpen,
+    closeCart,
+    openCheckout,
     cart,
     removeFromCart,
     updateCartQuantity,
@@ -23,7 +24,6 @@ export const CartDrawer = () => {
     shippingFee,
     cartTotal,
     settings,
-    setIsCheckoutOpen,
     totalCartItemCount,
     isFreeShipping,
     navigateToProduct
@@ -36,12 +36,22 @@ export const CartDrawer = () => {
   const amountNeededForFree = Math.max(0, freeShippingThreshold - cartSubtotal);
 
   const handleProceedToCheckout = () => {
-    setIsCartOpen(false);
-    setIsCheckoutOpen(true);
+    closeCart();
+    openCheckout();
+  };
+
+  const handleStartShopping = () => {
+    closeCart();
+    setTimeout(() => {
+      const catalogEl = document.getElementById("catalog-section");
+      if (catalogEl) {
+        catalogEl.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 80);
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setIsCartOpen(false)} style={{ justifyContent: "flex-end", padding: 0 }}>
+    <div className="modal-overlay" onClick={closeCart} style={{ justifyContent: "flex-end", padding: 0 }}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -74,7 +84,7 @@ export const CartDrawer = () => {
             </h3>
           </div>
           <button
-            onClick={() => setIsCartOpen(false)}
+            onClick={closeCart}
             style={{
               background: "transparent",
               border: "none",
@@ -82,6 +92,7 @@ export const CartDrawer = () => {
               cursor: "pointer",
               padding: "4px"
             }}
+            title="Close Bag"
           >
             <X size={20} />
           </button>
@@ -101,7 +112,7 @@ export const CartDrawer = () => {
                 {isFreeShipping ? "FREE Nationwide Delivery Unlocked!" : `Add ${formatCurrency(amountNeededForFree, settings.currencySymbol)} for FREE Delivery`}
               </span>
             </span>
-            <span style={{ color: "var(--accent-gold-dark)", fontWeight: 800 }}>{progressPercent}%</span>
+            <strong style={{ color: "var(--accent-gold-dark)", fontWeight: 800 }}>{progressPercent}%</strong>
           </div>
           <div style={{ width: "100%", height: "6px", background: "rgba(0,0,0,0.06)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
             <div style={{
@@ -124,7 +135,7 @@ export const CartDrawer = () => {
               <p style={{ fontSize: "0.82rem", marginBottom: "16px" }}>
                 Explore our signature designs and add your favorite fits!
               </p>
-              <button onClick={() => setIsCartOpen(false)} className="btn btn-gold btn-sm">
+              <button onClick={handleStartShopping} className="btn btn-gold btn-sm">
                 Start Shopping
               </button>
             </div>

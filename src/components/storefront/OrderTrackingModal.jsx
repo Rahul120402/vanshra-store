@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 export const OrderTrackingModal = () => {
-  const { isOrderTrackingOpen, setIsOrderTrackingOpen, orders, settings } = useStore();
+  const { isOrderTrackingOpen, closeOrderTracking, orders, settings } = useStore();
   const [searchInput, setSearchInput] = useState("");
   const [searchedOrder, setSearchedOrder] = useState(null);
   const [searchAttempted, setSearchAttempted] = useState(false);
@@ -49,7 +49,7 @@ export const OrderTrackingModal = () => {
   ];
 
   return (
-    <div className="modal-overlay" onClick={() => setIsOrderTrackingOpen(false)}>
+    <div className="modal-overlay" onClick={closeOrderTracking}>
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
@@ -76,7 +76,7 @@ export const OrderTrackingModal = () => {
             </h3>
           </div>
           <button
-            onClick={() => setIsOrderTrackingOpen(false)}
+            onClick={closeOrderTracking}
             style={{
               background: "transparent",
               border: "none",

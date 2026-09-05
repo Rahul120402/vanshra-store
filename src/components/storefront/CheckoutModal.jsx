@@ -18,7 +18,7 @@ import {
 export const CheckoutModal = () => {
   const {
     isCheckoutOpen,
-    setIsCheckoutOpen,
+    closeCheckout,
     cart,
     cartSubtotal,
     shippingFee,
@@ -88,7 +88,7 @@ export const CheckoutModal = () => {
 
   const handleClose = () => {
     setStep("details");
-    setIsCheckoutOpen(false);
+    closeCheckout();
   };
 
   return (

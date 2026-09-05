@@ -14,11 +14,11 @@ export const Navbar = () => {
     settings, 
     cart, 
     totalCartItemCount, 
-    setIsCartOpen, 
+    openCart, 
     navigateToHome,
     searchQuery, 
     setSearchQuery,
-    setIsOrderTrackingOpen
+    openOrderTracking
   } = useStore();
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -50,11 +50,13 @@ export const Navbar = () => {
       zIndex: 100,
       width: "100%",
       maxWidth: "100vw",
-      background: isScrolled ? "rgba(255, 255, 255, 0.88)" : "rgba(255, 255, 255, 0.96)",
+      background: isScrolled 
+        ? "linear-gradient(180deg, rgba(254, 250, 242, 0.97) 0%, rgba(248, 240, 226, 0.97) 100%)" 
+        : "linear-gradient(180deg, #fdf9f1 0%, #f6ecdc 100%)",
       backdropFilter: isScrolled ? "blur(24px) saturate(180%)" : "blur(16px)",
       WebkitBackdropFilter: isScrolled ? "blur(24px) saturate(180%)" : "blur(16px)",
-      borderBottom: "1px solid var(--border-gold)",
-      boxShadow: isScrolled ? "0 8px 30px rgba(44, 30, 10, 0.08)" : "0 4px 20px rgba(44, 30, 10, 0.04)",
+      borderBottom: "1.5px solid rgba(197, 150, 50, 0.32)",
+      boxShadow: isScrolled ? "0 8px 30px rgba(44, 30, 10, 0.09)" : "0 4px 18px rgba(44, 30, 10, 0.05)",
       transition: "background var(--transition-base), box-shadow var(--transition-base), backdrop-filter var(--transition-base)"
     }}>
       {/* Top Header Announcement Bar (Dynamic Luxury Ticker) */}
@@ -111,22 +113,23 @@ export const Navbar = () => {
             }}
             title="Return to Home Catalog"
           >
-            {/* Peacock Emblem with Golden Halo Glow */}
+            {/* Peacock Emblem with crisp golden ring */}
             <div style={{
-              width: isScrolled ? "clamp(32px, 7vw, 42px)" : "clamp(36px, 8vw, 48px)",
-              height: isScrolled ? "clamp(32px, 7vw, 42px)" : "clamp(36px, 8vw, 48px)",
+              width: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)",
+              height: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)",
               borderRadius: "50%",
               background: "#ffffff",
               padding: "2px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 18px rgba(212, 175, 55, 0.45)",
-              border: "1.5px solid var(--border-gold-bright)",
+              boxShadow: "0 2px 10px rgba(44, 30, 10, 0.12)",
+              border: "1.5px solid var(--accent-gold-dark)",
+              overflow: "hidden",
               transition: "all var(--transition-base)",
               flexShrink: 0
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.08) rotate(4deg)")}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06) rotate(3deg)")}
             onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1) rotate(0deg)")}
             >
               <img
@@ -135,6 +138,7 @@ export const Navbar = () => {
                 style={{
                   width: "100%",
                   height: "100%",
+                  borderRadius: "50%",
                   objectFit: "contain"
                 }}
               />
@@ -181,7 +185,7 @@ export const Navbar = () => {
           alignItems: "center",
           position: "relative"
         }} className="desktop-search">
-          <Search size={15} style={{ position: "absolute", left: "14px", color: "var(--accent-gold)" }} />
+          <Search size={15} style={{ position: "absolute", left: "14px", color: "var(--accent-gold-dark)" }} />
           <input
             type="text"
             placeholder="Search kurtis, co-ords, silks, tops..."
@@ -195,7 +199,7 @@ export const Navbar = () => {
               borderRadius: "var(--radius-full)",
               fontSize: "0.86rem",
               background: "#ffffff",
-              border: "1.5px solid var(--border-gold)",
+              border: "1.5px solid rgba(197, 150, 50, 0.35)",
               boxShadow: "0 2px 8px rgba(44, 30, 10, 0.04)"
             }}
           />
@@ -224,7 +228,7 @@ export const Navbar = () => {
             className="mobile-search-btn"
             style={{
               background: "#ffffff",
-              border: "1.5px solid var(--border-gold)",
+              border: "1.5px solid rgba(197, 150, 50, 0.35)",
               borderRadius: "var(--radius-full)",
               width: "clamp(36px, 8vw, 40px)",
               height: "clamp(36px, 8vw, 40px)",
@@ -254,7 +258,8 @@ export const Navbar = () => {
               gap: "6px",
               borderRadius: "var(--radius-full)",
               textDecoration: "none",
-              borderColor: "rgba(37, 211, 102, 0.4)",
+              background: "#ffffff",
+              borderColor: "rgba(37, 211, 102, 0.5)",
               color: "#128c7e",
               fontWeight: 700
             }}
@@ -266,12 +271,14 @@ export const Navbar = () => {
 
           {/* Track Order Button */}
           <button
-            onClick={() => setIsOrderTrackingOpen(true)}
+            onClick={openOrderTracking}
             className="btn btn-secondary btn-sm nav-link-indicator"
             style={{
               display: "flex",
               alignItems: "center",
               gap: "5px",
+              background: "#ffffff",
+              border: "1.5px solid rgba(197, 150, 50, 0.35)",
               borderRadius: "var(--radius-full)",
               fontWeight: 600,
               padding: "clamp(5px, 1.2vw, 7px) clamp(8px, 1.8vw, 14px)",
@@ -285,7 +292,7 @@ export const Navbar = () => {
 
           {/* Shopping Bag Button with Glowing Pulse Badge & Pop animation */}
           <button
-            onClick={() => setIsCartOpen(true)}
+            onClick={openCart}
             className="btn btn-gold"
             style={{
               borderRadius: "var(--radius-full)",

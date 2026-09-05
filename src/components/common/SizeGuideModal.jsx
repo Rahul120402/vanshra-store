@@ -4,7 +4,7 @@ import { X, Ruler, Sparkles, MessageCircle } from "lucide-react";
 import { createGeneralInquiryUrl } from "../../utils/whatsapp";
 
 export const SizeGuideModal = () => {
-  const { isSizeGuideOpen, setIsSizeGuideOpen, settings } = useStore();
+  const { isSizeGuideOpen, closeSizeGuide, settings } = useStore();
   const [unit, setUnit] = useState("in"); // "in" | "cm"
 
   if (!isSizeGuideOpen) return null;
@@ -24,7 +24,7 @@ export const SizeGuideModal = () => {
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setIsSizeGuideOpen(false)}>
+    <div className="modal-overlay" onClick={closeSizeGuide}>
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
@@ -47,7 +47,7 @@ export const SizeGuideModal = () => {
             </h2>
           </div>
           <button
-            onClick={() => setIsSizeGuideOpen(false)}
+            onClick={closeSizeGuide}
             style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
           >
             <X size={20} />
