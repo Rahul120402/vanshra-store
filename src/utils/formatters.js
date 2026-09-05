@@ -60,8 +60,8 @@ export const formatMonthYear = (monthKeyOrDateString) => {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 };
 
-// High-speed browser canvas image optimizer (compresses 5MB+ photos to ~35KB-50KB for zero-latency cloud saving)
-export const compressImage = (file, maxWidth = 750, maxHeight = 900, quality = 0.65) => {
+// High-Definition Luxury Image Optimizer (Crisp HD 1200x1500, high smoothing, rich fabric detail)
+export const compressImage = (file, maxWidth = 1200, maxHeight = 1500, quality = 0.85) => {
   return new Promise((resolve) => {
     if (!file || !file.type || !file.type.startsWith("image/")) {
       resolve("");
@@ -84,6 +84,10 @@ export const compressImage = (file, maxWidth = 750, maxHeight = 900, quality = 0
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
+        
+        // Enable high-quality anti-aliasing & bicubic rendering
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, width, height);
 
         let compressed = canvas.toDataURL("image/webp", quality);

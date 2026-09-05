@@ -149,7 +149,13 @@ export const ProductDetailPage = () => {
           marginBottom: "24px"
         }}>
           <button
-            onClick={() => setSelectedProductId(null)}
+            onClick={() => {
+              if (window.location.hash.startsWith("#product-")) {
+                window.history.back();
+              } else {
+                setSelectedProductId(null);
+              }
+            }}
             className="btn btn-secondary btn-sm"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", borderRadius: "var(--radius-full)" }}
           >
@@ -158,7 +164,18 @@ export const ProductDetailPage = () => {
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.80rem", color: "var(--text-muted)", flexWrap: "wrap" }}>
-            <span style={{ cursor: "pointer", transition: "color var(--transition-fast)" }} onClick={() => setSelectedProductId(null)}>Home</span>
+            <span 
+              style={{ cursor: "pointer", transition: "color var(--transition-fast)" }} 
+              onClick={() => {
+                if (window.location.hash.startsWith("#product-")) {
+                  window.history.back();
+                } else {
+                  setSelectedProductId(null);
+                }
+              }}
+            >
+              Home
+            </span>
             <ChevronRight size={12} />
             <span>{product.category}</span>
             <ChevronRight size={12} />

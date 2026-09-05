@@ -247,10 +247,89 @@ export const StoreProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Dynamic URL hash & Keyboard Shortcut (Ctrl+Shift+A) for instant owner access
+  // Dynamic URL hash, Browser History (Back / Forward / Mobile Swipe Back) & Admin Shortcuts
   useEffect(() => {
-    const handleCheckAdminTrigger = () => {
-      if (window.location.hash === "#admin" || window.location.search.includes("admin")) {
+    // 1. Initial URL check on page load
+    const hash = window.location.hash;
+    if (hash.startsWith("#product-")) {
+      const prodId = hash.replace("#product-", "");
+      setSelectedProductId(prodId);
+    } else if (hash === "#admin" || window.location.search.includes("admin")) {
+      if (sessionStorage.getItem("vanshra_admin_auth") === "true") {
+        setCurrentView("admin");
+      } else {
+        setIsAdminAuthModalOpen(true);
+      }
+    } else if (hash === "#cart") {
+      setIsCartOpen(true);
+    } else if (hash === "#tracking") {
+      setIsOrderTrackingOpen(true);
+    }
+
+    // 2. Keyboard shortcut for Admin (Ctrl+Shift+A)
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
+        e.preventDefault();
+        openAdminLogin();
+      }
+    };
+
+    // 3. Popstate event listener (Browser Back / Mobile Swipe Back Navigation)
+    const handlePopState = () => {
+      const currentHash = window.location.hash;
+
+      // Priority 1: Modals (Checkout, Cart, QuickView, SizeGuide, Tracking, OrderDetail, AdminAuth)
+      if (isCheckoutOpen) {
+        setIsCheckoutOpen(false);
+        return;
+      }
+      if (isCartOpen) {
+        setIsCartOpen(false);
+        return;
+      }
+      if (isQuickViewOpen) {
+        setIsQuickViewOpen(false);
+        setQuickViewProduct(null);
+        return;
+      }
+      if (isSizeGuideOpen) {
+        setIsSizeGuideOpen(false);
+        return;
+      }
+      if (isOrderTrackingOpen) {
+        setIsOrderTrackingOpen(false);
+        return;
+      }
+      if (isAdminAuthModalOpen) {
+        setIsAdminAuthModalOpen(false);
+        return;
+      }
+      if (selectedOrderForDetail) {
+        setSelectedOrderForDetail(null);
+        return;
+      }
+
+      // Priority 2: Product Detail Page
+      if (selectedProductId) {
+        if (!currentHash.startsWith("#product-")) {
+          setSelectedProductId(null);
+        }
+        return;
+      }
+
+      // Priority 3: Admin Layout
+      if (currentView === "admin") {
+        if (currentHash !== "#admin") {
+          setCurrentView("store");
+        }
+        return;
+      }
+
+      // Priority 4: Forward navigation / hash changes
+      if (currentHash.startsWith("#product-")) {
+        const prodId = currentHash.replace("#product-", "");
+        setSelectedProductId(prodId);
+      } else if (currentHash === "#admin") {
         if (sessionStorage.getItem("vanshra_admin_auth") === "true") {
           setCurrentView("admin");
         } else {
@@ -259,23 +338,63 @@ export const StoreProvider = ({ children }) => {
       }
     };
 
-    const handleKeyDown = (e) => {
-      // Ctrl + Shift + A (or Cmd + Shift + A) to open Admin Portal
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
-        e.preventDefault();
-        openAdminLogin();
-      }
-    };
-
-    handleCheckAdminTrigger();
-    window.addEventListener("hashchange", handleCheckAdminTrigger);
+    window.addEventListener("popstate", handlePopState);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("hashchange", handleCheckAdminTrigger);
+      window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [
+    isCheckoutOpen,
+    isCartOpen,
+    isQuickViewOpen,
+    isSizeGuideOpen,
+    isOrderTrackingOpen,
+    isAdminAuthModalOpen,
+    selectedOrderForDetail,
+    selectedProductId,
+    currentView
+  ]);
+
+  // Push history state whenever user opens a modal or product view
+  useEffect(() => {
+    if (selectedProductId) {
+      if (window.location.hash !== `#product-${selectedProductId}`) {
+        window.history.pushState({ modal: "product", id: selectedProductId }, "", `#product-${selectedProductId}`);
+      }
+    }
+  }, [selectedProductId]);
+
+  useEffect(() => {
+    if (isCartOpen && window.location.hash !== "#cart") {
+      window.history.pushState({ modal: "cart" }, "", "#cart");
+    }
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    if (isCheckoutOpen && window.location.hash !== "#checkout") {
+      window.history.pushState({ modal: "checkout" }, "", "#checkout");
+    }
+  }, [isCheckoutOpen]);
+
+  useEffect(() => {
+    if (isQuickViewOpen && window.location.hash !== "#quickview") {
+      window.history.pushState({ modal: "quickview" }, "", "#quickview");
+    }
+  }, [isQuickViewOpen]);
+
+  useEffect(() => {
+    if (isSizeGuideOpen && window.location.hash !== "#sizeguide") {
+      window.history.pushState({ modal: "sizeguide" }, "", "#sizeguide");
+    }
+  }, [isSizeGuideOpen]);
+
+  useEffect(() => {
+    if (isOrderTrackingOpen && window.location.hash !== "#tracking") {
+      window.history.pushState({ modal: "tracking" }, "", "#tracking");
+    }
+  }, [isOrderTrackingOpen]);
 
   // Safe LocalStorage setter with QuotaExceededError protection & auto-pruning
   const safeSetStorage = (key, value) => {
