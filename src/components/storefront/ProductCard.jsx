@@ -6,7 +6,7 @@ import { Heart, Eye, Check, ShoppingBag } from "lucide-react";
 export const ProductCard = ({ product }) => {
   const {
     settings,
-    setSelectedProductId,
+    navigateToProduct,
     setIsQuickViewOpen,
     setQuickViewProduct,
     addToCart,
@@ -25,8 +25,7 @@ export const ProductCard = ({ product }) => {
     : 0;
 
   const handleCardClick = () => {
-    setSelectedProductId(product.id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigateToProduct(product.id);
   };
 
   const handleQuickView = (e) => {

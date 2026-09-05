@@ -247,30 +247,109 @@ export const StoreProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Dynamic URL hash, Browser History (Back / Forward / Mobile Swipe Back) & Admin Shortcuts
-  useEffect(() => {
-    // 1. Initial URL check on page load
-    const hash = window.location.hash;
-    if (hash.startsWith("#product-")) {
-      const prodId = hash.replace("#product-", "");
-      setSelectedProductId(prodId);
-    } else if (hash === "#admin" || window.location.search.includes("admin")) {
-      if (sessionStorage.getItem("vanshra_admin_auth") === "true") {
-        setCurrentView("admin");
-      } else {
-        setIsAdminAuthModalOpen(true);
-      }
-    } else if (hash === "#cart") {
-      setIsCartOpen(true);
-    } else if (hash === "#tracking") {
-      setIsOrderTrackingOpen(true);
+  // Comprehensive Centralized SPA Navigation Helpers
+  const navigateToHome = () => {
+    setCurrentView("store");
+    setSelectedProductId(null);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(false);
+    setIsQuickViewOpen(false);
+    setIsSizeGuideOpen(false);
+    setIsOrderTrackingOpen(false);
+    setIsAdminAuthModalOpen(false);
+    setSelectedOrderForDetail(null);
+    setSearchQuery("");
+
+    // Clear URL hash to pure root
+    if (window.location.hash) {
+      window.history.pushState(null, "", window.location.pathname);
     }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateToProduct = (productId) => {
+    setCurrentView("store");
+    setSelectedProductId(productId);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(false);
+    setIsQuickViewOpen(false);
+    setIsSizeGuideOpen(false);
+    setIsOrderTrackingOpen(false);
+    setSelectedOrderForDetail(null);
+
+    const targetHash = `#product-${productId}`;
+    if (window.location.hash !== targetHash) {
+      window.history.pushState({ modal: "product", id: productId }, "", targetHash);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateToCategory = (categoryName) => {
+    setCurrentView("store");
+    setSelectedProductId(null);
+    setActiveCategory(categoryName);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(false);
+    setIsQuickViewOpen(false);
+    setIsSizeGuideOpen(false);
+    setIsOrderTrackingOpen(false);
+    setSelectedOrderForDetail(null);
+
+    if (window.location.hash) {
+      window.history.pushState(null, "", window.location.pathname);
+    }
+
+    setTimeout(() => {
+      const catalogEl = document.getElementById("catalog-section");
+      if (catalogEl) {
+        catalogEl.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
+  };
+
+  const navigateToAdmin = () => {
+    if (isAdminAuthenticated) {
+      setCurrentView("admin");
+      if (window.location.hash !== "#admin") {
+        window.history.pushState({ modal: "admin" }, "", "#admin");
+      }
+    } else {
+      setIsAdminAuthModalOpen(true);
+    }
+  };
+
+  // Dynamic URL hash, Browser History (Back / Forward / Mobile Swipe Back) & Router Sync
+  useEffect(() => {
+    // 1. Synchronize state with current URL hash
+    const syncFromHash = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith("#product-")) {
+        const prodId = hash.replace("#product-", "");
+        setSelectedProductId(prodId);
+        setCurrentView("store");
+      } else if (hash === "#admin" || window.location.search.includes("admin")) {
+        if (sessionStorage.getItem("vanshra_admin_auth") === "true") {
+          setCurrentView("admin");
+        } else {
+          setIsAdminAuthModalOpen(true);
+        }
+      } else if (hash === "#cart") {
+        setIsCartOpen(true);
+      } else if (hash === "#tracking") {
+        setIsOrderTrackingOpen(true);
+      } else if (!hash || hash === "#") {
+        setSelectedProductId(null);
+        setCurrentView("store");
+      }
+    };
+
+    syncFromHash();
 
     // 2. Keyboard shortcut for Admin (Ctrl+Shift+A)
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
         e.preventDefault();
-        openAdminLogin();
+        navigateToAdmin();
       }
     };
 
@@ -278,7 +357,7 @@ export const StoreProvider = ({ children }) => {
     const handlePopState = () => {
       const currentHash = window.location.hash;
 
-      // Priority 1: Modals (Checkout, Cart, QuickView, SizeGuide, Tracking, OrderDetail, AdminAuth)
+      // Priority 1: Modals
       if (isCheckoutOpen) {
         setIsCheckoutOpen(false);
         return;
@@ -310,39 +389,28 @@ export const StoreProvider = ({ children }) => {
       }
 
       // Priority 2: Product Detail Page
-      if (selectedProductId) {
-        if (!currentHash.startsWith("#product-")) {
-          setSelectedProductId(null);
-        }
+      if (selectedProductId && !currentHash.startsWith("#product-")) {
+        setSelectedProductId(null);
         return;
       }
 
       // Priority 3: Admin Layout
-      if (currentView === "admin") {
-        if (currentHash !== "#admin") {
-          setCurrentView("store");
-        }
+      if (currentView === "admin" && currentHash !== "#admin") {
+        setCurrentView("store");
         return;
       }
 
-      // Priority 4: Forward navigation / hash changes
-      if (currentHash.startsWith("#product-")) {
-        const prodId = currentHash.replace("#product-", "");
-        setSelectedProductId(prodId);
-      } else if (currentHash === "#admin") {
-        if (sessionStorage.getItem("vanshra_admin_auth") === "true") {
-          setCurrentView("admin");
-        } else {
-          setIsAdminAuthModalOpen(true);
-        }
-      }
+      // Priority 4: Re-sync state from active URL Hash
+      syncFromHash();
     };
 
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", syncFromHash);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", syncFromHash);
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [
@@ -357,7 +425,7 @@ export const StoreProvider = ({ children }) => {
     currentView
   ]);
 
-  // Push history state whenever user opens a modal or product view
+  // Sync URL hash when modal states change
   useEffect(() => {
     if (selectedProductId) {
       if (window.location.hash !== `#product-${selectedProductId}`) {
@@ -1041,9 +1109,13 @@ export const StoreProvider = ({ children }) => {
         cart,
         wishlist,
         metrics,
-        // Views & Modals
+        // Views & Modals & Navigation
         currentView,
         setCurrentView,
+        navigateToHome,
+        navigateToProduct,
+        navigateToCategory,
+        navigateToAdmin,
         isAdminAuthenticated,
         isAdminAuthModalOpen,
         setIsAdminAuthModalOpen,

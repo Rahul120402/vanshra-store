@@ -15,8 +15,7 @@ export const Navbar = () => {
     cart, 
     totalCartItemCount, 
     setIsCartOpen, 
-    setCurrentView, 
-    setSelectedProductId, 
+    navigateToHome,
     searchQuery, 
     setSearchQuery,
     setIsOrderTrackingOpen
@@ -98,10 +97,7 @@ export const Navbar = () => {
         {/* Brand Logo & Royal Emblem */}
         <div style={{ display: "flex", alignItems: "center", minWidth: 0, flexShrink: 1 }}>
           <button
-            onClick={() => {
-              setCurrentView("store");
-              setSelectedProductId(null);
-            }}
+            onClick={navigateToHome}
             style={{
               background: "transparent",
               border: "none",
@@ -113,6 +109,7 @@ export const Navbar = () => {
               minWidth: 0,
               textAlign: "left"
             }}
+            title="Return to Home Catalog"
           >
             {/* Peacock Emblem with Golden Halo Glow */}
             <div style={{

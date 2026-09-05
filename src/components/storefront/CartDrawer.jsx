@@ -25,7 +25,8 @@ export const CartDrawer = () => {
     settings,
     setIsCheckoutOpen,
     totalCartItemCount,
-    isFreeShipping
+    isFreeShipping,
+    navigateToProduct
   } = useStore();
 
   if (!isCartOpen) return null;
@@ -141,7 +142,14 @@ export const CartDrawer = () => {
                 }}
               >
                 {/* Thumbnail */}
-                <div style={{ width: "62px", height: "76px", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "#0a0c10", flexShrink: 0 }}>
+                <div 
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    navigateToProduct(item.productId);
+                  }}
+                  style={{ width: "62px", height: "76px", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "#0a0c10", flexShrink: 0, cursor: "pointer" }}
+                  title="View Product"
+                >
                   <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
 
@@ -149,7 +157,14 @@ export const CartDrawer = () => {
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "6px" }}>
-                      <h4 style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <h4 
+                        onClick={() => {
+                          setIsCartOpen(false);
+                          navigateToProduct(item.productId);
+                        }}
+                        style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+                        title={item.name}
+                      >
                         {item.name}
                       </h4>
                       <button

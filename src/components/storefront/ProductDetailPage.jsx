@@ -26,7 +26,8 @@ export const ProductDetailPage = () => {
   const {
     products,
     selectedProductId,
-    setSelectedProductId,
+    navigateToHome,
+    navigateToCategory,
     settings,
     addToCart,
     wishlist,
@@ -149,15 +150,10 @@ export const ProductDetailPage = () => {
           marginBottom: "24px"
         }}>
           <button
-            onClick={() => {
-              if (window.location.hash.startsWith("#product-")) {
-                window.history.back();
-              } else {
-                setSelectedProductId(null);
-              }
-            }}
+            onClick={navigateToHome}
             className="btn btn-secondary btn-sm"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", borderRadius: "var(--radius-full)" }}
+            title="Return to Catalog"
           >
             <ArrowLeft size={15} />
             <span>Back to All Collections</span>
@@ -166,18 +162,19 @@ export const ProductDetailPage = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.80rem", color: "var(--text-muted)", flexWrap: "wrap" }}>
             <span 
               style={{ cursor: "pointer", transition: "color var(--transition-fast)" }} 
-              onClick={() => {
-                if (window.location.hash.startsWith("#product-")) {
-                  window.history.back();
-                } else {
-                  setSelectedProductId(null);
-                }
-              }}
+              onClick={navigateToHome}
+              title="Go to Home"
             >
               Home
             </span>
             <ChevronRight size={12} />
-            <span>{product.category}</span>
+            <span 
+              style={{ cursor: "pointer", transition: "color var(--transition-fast)" }} 
+              onClick={() => navigateToCategory(product.category)}
+              title={`View all ${product.category}`}
+            >
+              {product.category}
+            </span>
             <ChevronRight size={12} />
             <span style={{ color: "var(--text-primary)", fontWeight: 600, maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.name}</span>
           </div>

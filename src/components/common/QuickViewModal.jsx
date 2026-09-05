@@ -12,7 +12,7 @@ export const QuickViewModal = () => {
     addToCart,
     wishlist,
     toggleWishlist,
-    setSelectedProductId,
+    navigateToProduct,
     setIsSizeGuideOpen
   } = useStore();
 
@@ -49,9 +49,8 @@ export const QuickViewModal = () => {
   };
 
   const handleViewFullPage = () => {
-    setSelectedProductId(quickViewProduct.id);
     setIsQuickViewOpen(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigateToProduct(quickViewProduct.id);
   };
 
   return (

@@ -14,7 +14,7 @@ import {
 import { createGeneralInquiryUrl } from "../../utils/whatsapp";
 
 export const Footer = () => {
-  const { settings, setActiveCategory, openAdminLogin } = useStore();
+  const { settings, navigateToHome, navigateToCategory, openAdminLogin } = useStore();
 
   const handleWhatsAppHelp = () => {
     const url = createGeneralInquiryUrl(settings.adminWhatsApp, "your latest collection", settings);
@@ -119,7 +119,11 @@ export const Footer = () => {
         }}>
           {/* Brand Info */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+            <div 
+              onClick={navigateToHome}
+              style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px", cursor: "pointer" }}
+              title="Return to Home"
+            >
               <div style={{
                 width: "40px",
                 height: "40px",
@@ -176,13 +180,7 @@ export const Footer = () => {
               {(settings.categories || []).map((cat) => (
                 <li key={cat}>
                   <button
-                    onClick={() => {
-                      setActiveCategory(cat);
-                      const catalogSection = document.getElementById("catalog-section");
-                      if (catalogSection) {
-                        catalogSection.scrollIntoView({ behavior: "smooth" });
-                      }
-                    }}
+                    onClick={() => navigateToCategory(cat)}
                     style={{
                       background: "transparent",
                       border: "none",
