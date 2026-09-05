@@ -63,7 +63,7 @@ export const HeroBanner = () => {
       aria-label="Hero Collection Showcase"
       style={{
         position: "relative",
-        minHeight: "clamp(520px, 75vh, 680px)",
+        minHeight: "clamp(360px, 46vh, 480px)",
         width: "100%",
         maxWidth: "100vw",
         display: "flex",
@@ -130,7 +130,7 @@ export const HeroBanner = () => {
         zIndex: 1
       }} />
 
-      <div className="container" style={{ position: "relative", zIndex: 2, padding: "clamp(36px, 6vw, 68px) clamp(12px, 3vw, 24px)" }}>
+      <div className="container" style={{ position: "relative", zIndex: 2, padding: "clamp(16px, 2.5vw, 26px) clamp(12px, 3vw, 24px)" }}>
         <div style={{ maxWidth: "760px" }}>
           
           {/* Top Universal Brand Badge with Stagger Reveal 1 & Radar Pulse */}
@@ -144,13 +144,13 @@ export const HeroBanner = () => {
               backdropFilter: "blur(12px)",
               border: "1.5px solid var(--border-gold-bright)",
               color: "var(--accent-gold-dark)",
-              padding: "6px 14px",
+              padding: "5px 12px",
               borderRadius: "var(--radius-full)",
-              fontSize: "clamp(0.66rem, 2vw, 0.78rem)",
+              fontSize: "clamp(0.66rem, 2vw, 0.76rem)",
               fontWeight: 800,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              marginBottom: "18px",
+              marginBottom: "12px",
               boxShadow: "0 4px 20px rgba(212, 175, 55, 0.22)",
               maxWidth: "100%",
               lineHeight: 1.3
