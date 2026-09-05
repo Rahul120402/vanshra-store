@@ -71,14 +71,14 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
     } else {
       setFormData({
         name: "",
-        category: settings.categories.find((c) => c !== "All") || "Dresses",
+        category: settings.categories.find((c) => c !== "All") || "Kurtis",
         price: "",
         originalPrice: "",
         sku: `VAN-${Math.floor(100 + Math.random() * 900)}`,
         description: "",
         fabricCare: "Premium handcrafted fabric. Gentle wash or dry clean recommended.",
-        images: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1000&q=80"],
-        colors: [{ name: "Classic Onyx", hex: "#1a1a1a" }],
+        images: [""],
+        colors: [{ name: "Standard", hex: "#1a1a1a" }],
         sizes: { S: 5, M: 8, L: 5, XL: 2, XXL: 0 },
         isNew: true,
         isBestSeller: false

@@ -107,8 +107,8 @@ export const compressImage = (file, maxWidth = 1200, maxHeight = 1500, quality =
     reader.readAsDataURL(file);
   });
 };
-// Fallback luxury placeholder image
-export const FALLBACK_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1000&q=80";
+// Fallback luxury placeholder image (Neutral royal champagne placeholder)
+export const FALLBACK_PRODUCT_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 750' width='600' height='750'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fdfaf5'/%3E%3Cstop offset='100%25' stop-color='%23f4ede0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23g)'/%3E%3Crect x='20' y='20' width='560' height='710' fill='none' stroke='%23d4af37' stroke-width='1.5' stroke-dasharray='6 6' rx='12' opacity='0.5'/%3E%3Cg transform='translate(300, 340)' text-anchor='middle'%3E%3Ccircle cx='0' cy='-40' r='42' fill='%23ffffff' stroke='%23d4af37' stroke-width='1.5'/%3E%3Ctext y='-33' font-family='serif' font-size='26' fill='%23b38728'%3EV%3C/text%3E%3Ctext y='45' font-family='sans-serif' font-size='17' font-weight='600' letter-spacing='3' fill='%232c1e0a'%3EVANSHRA%3C/text%3E%3Ctext y='72' font-family='sans-serif' font-size='12' font-weight='500' letter-spacing='1' fill='%238c734b'%3EPHOTO COMING SOON%3C/text%3E%3C/g%3E%3C/svg%3E";
 
 // Smart Image URL Normalizer (Converts Google Drive, Dropbox, Imgur links to direct loadable images)
 export const normalizeImageUrl = (rawUrl) => {
