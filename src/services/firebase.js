@@ -198,10 +198,14 @@ export const saveOrderToCloud = async (order) => {
 
   try {
     const docId = String(order.id);
+    const orderWithUpdated = {
+      ...order,
+      updatedAt: order.updatedAt || new Date().toISOString()
+    };
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
 
     const body = JSON.stringify({
-      fields: toFirestoreFields(order)
+      fields: toFirestoreFields(orderWithUpdated)
     });
 
     const res = await fetch(url, {
@@ -217,17 +221,19 @@ export const saveOrderToCloud = async (order) => {
   }
 };
 
-export const updateOrderStatusInCloud = async (orderId, newStatus) => {
+export const updateOrderStatusInCloud = async (orderId, newStatus, updatedAtIso) => {
   if (!isFirebaseConfigured()) return false;
   const config = getFirebaseConfig();
+  const nowIso = updatedAtIso || new Date().toISOString();
 
   try {
     const docId = String(orderId);
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders/${docId}?updateMask.fieldPaths=status&${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders/${docId}?updateMask.fieldPaths=status&updateMask.fieldPaths=updatedAt&${config.apiKey ? `key=${config.apiKey}` : ""}`;
 
     const body = JSON.stringify({
       fields: {
-        status: { stringValue: newStatus }
+        status: { stringValue: newStatus },
+        updatedAt: { stringValue: nowIso }
       }
     });
 

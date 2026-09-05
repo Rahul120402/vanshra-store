@@ -135,6 +135,7 @@ export const normalizeOrder = (order) => {
     ...order,
     id: order.id || generateOrderId("VAN"),
     createdAt: order.createdAt || new Date().toISOString(),
+    updatedAt: order.updatedAt || order.createdAt || new Date().toISOString(),
     status: order.status || "New",
     customer: {
       fullName: custName,
@@ -707,19 +708,46 @@ export const StoreProvider = ({ children }) => {
           const normalizedCloud = cloudOrders
             .filter((o) => o && o.id && !DEMO_ORDER_IDS.has(o.id))
             .map(normalizeOrder)
-            .filter(Boolean)
-            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            .filter(Boolean);
 
           setOrders((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
-            safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
-            return normalizedCloud;
+            const prevMap = new Map(prev.map((o) => [o.id, o]));
+            const resolvedOrders = normalizedCloud.map((cloudOrd) => {
+              const localOrd = prevMap.get(cloudOrd.id);
+              if (!localOrd) return cloudOrd;
+
+              const localTime = new Date(localOrd.updatedAt || localOrd.createdAt || 0).getTime();
+              const cloudTime = new Date(cloudOrd.updatedAt || cloudOrd.createdAt || 0).getTime();
+
+              // If local state was updated more recently or equal, keep local version
+              if (localTime > cloudTime) {
+                return localOrd;
+              }
+              return cloudOrd;
+            });
+
+            // Keep local-only orders that haven't synced to cloud yet
+            const cloudIdSet = new Set(normalizedCloud.map((o) => o.id));
+            prev.forEach((localOrd) => {
+              if (!cloudIdSet.has(localOrd.id) && !DEMO_ORDER_IDS.has(localOrd.id)) {
+                resolvedOrders.push(localOrd);
+              }
+            });
+
+            const sorted = resolvedOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+            if (JSON.stringify(prev) === JSON.stringify(sorted)) return prev;
+            safeSetStorage(STORAGE_KEYS.ORDERS, sorted);
+            return sorted;
           });
 
           setSelectedOrderForDetail((curr) => {
             if (!curr) return null;
             const match = normalizedCloud.find((o) => o.id === curr.id);
-            return match || curr;
+            if (!match) return curr;
+            const currTime = new Date(curr.updatedAt || curr.createdAt || 0).getTime();
+            const matchTime = new Date(match.updatedAt || match.createdAt || 0).getTime();
+            return currTime > matchTime ? curr : match;
           });
         }
 
@@ -1063,14 +1091,17 @@ export const StoreProvider = ({ children }) => {
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId, newStatus, dispatchData = {}) => {
+  const updateOrderStatus = async (orderId, newStatus, dispatchData = {}) => {
+    const nowIso = new Date().toISOString();
     let updatedOrderObj = null;
+
     setOrders((prev) => {
       const next = prev.map((order) => {
         if (order.id === orderId) {
           updatedOrderObj = normalizeOrder({
             ...order,
             status: newStatus,
+            updatedAt: nowIso,
             dispatchInfo: {
               ...(order.dispatchInfo || {}),
               ...dispatchData
@@ -1088,11 +1119,19 @@ export const StoreProvider = ({ children }) => {
       setSelectedOrderForDetail((prev) => (prev && prev.id === orderId ? updatedOrderObj : prev));
 
       if (isFirebaseConfigured()) {
-        saveOrderToCloud(updatedOrderObj);
-        updateOrderStatusInCloud(orderId, newStatus);
+        try {
+          const success = await saveOrderToCloud(updatedOrderObj);
+          if (!success) {
+            await updateOrderStatusInCloud(orderId, newStatus, nowIso);
+          }
+        } catch (err) {
+          console.warn("[VANSHRA Cloud] updateOrderStatus error:", err);
+          await updateOrderStatusInCloud(orderId, newStatus, nowIso);
+        }
       }
     }
     showToast(`Order #${orderId} marked as ${newStatus}`, "success");
+    return updatedOrderObj;
   };
 
   const deleteOrder = (orderId) => {
