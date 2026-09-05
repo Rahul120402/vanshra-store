@@ -284,16 +284,18 @@ export const StoreProvider = ({ children }) => {
     } catch (e) {
       console.warn(`LocalStorage quota exceeded for key: ${key}. Attempting storage optimization...`, e);
       try {
-        // If orders or products are too large, trim older history to keep app fast and error-free
         if (key === STORAGE_KEYS.ORDERS && Array.isArray(value)) {
-          const trimmed = value.slice(0, 25);
+          const trimmed = value.slice(0, 20);
           localStorage.setItem(key, JSON.stringify(trimmed));
         } else if (key === STORAGE_KEYS.PRODUCTS && Array.isArray(value)) {
-          // Store products without large base64 dumps if any
-          localStorage.setItem(key, JSON.stringify(value));
+          const trimmed = value.map((p) => ({
+            ...p,
+            images: (p.images || []).slice(0, 2)
+          }));
+          localStorage.setItem(key, JSON.stringify(trimmed));
         }
       } catch (innerErr) {
-        console.warn("Storage write failed. Operating safely in memory mode.", innerErr);
+        console.warn("Storage write fallback failed.", innerErr);
       }
     }
   };
@@ -448,7 +450,11 @@ export const StoreProvider = ({ children }) => {
       id: `prod-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    setProducts((prev) => [newProduct, ...prev]);
+    setProducts((prev) => {
+      const next = [newProduct, ...prev];
+      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+      return next;
+    });
     if (isFirebaseConfigured()) {
       saveProductToCloud(newProduct);
     }
@@ -459,6 +465,7 @@ export const StoreProvider = ({ children }) => {
   const updateProduct = (productId, updatedFields) => {
     setProducts((prev) => {
       const next = prev.map((prod) => (prod.id === productId ? { ...prod, ...updatedFields } : prod));
+      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
       const updated = next.find((p) => p.id === productId);
       if (updated && isFirebaseConfigured()) {
         saveProductToCloud(updated);
@@ -469,7 +476,11 @@ export const StoreProvider = ({ children }) => {
   };
 
   const deleteProduct = (productId) => {
-    setProducts((prev) => prev.filter((prod) => prod.id !== productId));
+    setProducts((prev) => {
+      const next = prev.filter((prod) => prod.id !== productId);
+      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+      return next;
+    });
     if (isFirebaseConfigured()) {
       deleteProductFromCloud(productId);
     }
