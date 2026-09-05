@@ -505,18 +505,27 @@ export const AdminOrdersView = ({ onSelectOrder }) => {
                           </div>
                         </div>
 
-                        <div onClick={(e) => e.stopPropagation()}>
+                        <div 
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <select
-                            value={order.status}
+                            value={order.status || "New"}
                             onChange={(e) => handleStatusChange(e, order.id)}
-                            className={`badge badge-${(order.status || "new").toLowerCase()}`}
                             style={{
                               cursor: "pointer",
                               outline: "none",
                               fontSize: "0.76rem",
                               fontWeight: 700,
                               padding: "5px 10px",
-                              border: "1px solid rgba(0,0,0,0.12)"
+                              borderRadius: "var(--radius-full)",
+                              border: `1.5px solid ${STATUS_CONFIG[order.status]?.color || "var(--border-subtle)"}`,
+                              background: STATUS_CONFIG[order.status]?.bg || "#ffffff",
+                              color: STATUS_CONFIG[order.status]?.color || "var(--text-primary)",
+                              display: "inline-block",
+                              boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
                             }}
                           >
                             <option value="New">🟡 New</option>
@@ -691,17 +700,28 @@ export const AdminOrdersView = ({ onSelectOrder }) => {
                             </td>
 
                             {/* Status Dropdown */}
-                            <td style={{ padding: "14px 16px" }} onClick={(e) => e.stopPropagation()}>
+                            <td 
+                              style={{ padding: "14px 16px" }} 
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <select
-                                value={order.status}
+                                value={order.status || "New"}
                                 onChange={(e) => handleStatusChange(e, order.id)}
-                                className={`badge badge-${(order.status || "new").toLowerCase()}`}
                                 style={{
                                   cursor: "pointer",
                                   outline: "none",
                                   fontSize: "0.78rem",
                                   fontWeight: 700,
-                                  padding: "5px 8px"
+                                  padding: "5px 10px",
+                                  borderRadius: "var(--radius-full)",
+                                  border: `1.5px solid ${STATUS_CONFIG[order.status]?.color || "var(--border-subtle)"}`,
+                                  background: STATUS_CONFIG[order.status]?.bg || "#ffffff",
+                                  color: STATUS_CONFIG[order.status]?.color || "var(--text-primary)",
+                                  display: "inline-block",
+                                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
                                 }}
                               >
                                 <option value="New">🟡 New</option>

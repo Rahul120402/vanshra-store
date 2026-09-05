@@ -10,6 +10,7 @@ import {
   deleteProductFromCloud,
   fetchCloudOrders, 
   saveOrderToCloud, 
+  updateOrderStatusInCloud,
   deleteOrderFromCloud,
   fetchCloudSettings,
   saveSettingsToCloud
@@ -714,6 +715,12 @@ export const StoreProvider = ({ children }) => {
             safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
             return normalizedCloud;
           });
+
+          setSelectedOrderForDetail((curr) => {
+            if (!curr) return null;
+            const match = normalizedCloud.find((o) => o.id === curr.id);
+            return match || curr;
+          });
         }
 
         if (cloudSettings && Object.keys(cloudSettings).length > 0) {
@@ -1077,8 +1084,13 @@ export const StoreProvider = ({ children }) => {
       return next;
     });
 
-    if (updatedOrderObj && isFirebaseConfigured()) {
-      saveOrderToCloud(updatedOrderObj);
+    if (updatedOrderObj) {
+      setSelectedOrderForDetail((prev) => (prev && prev.id === orderId ? updatedOrderObj : prev));
+
+      if (isFirebaseConfigured()) {
+        saveOrderToCloud(updatedOrderObj);
+        updateOrderStatusInCloud(orderId, newStatus);
+      }
     }
     showToast(`Order #${orderId} marked as ${newStatus}`, "success");
   };

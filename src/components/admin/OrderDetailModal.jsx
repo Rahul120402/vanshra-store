@@ -43,6 +43,16 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
 
   if (!isOpen || !order) return null;
 
+  const handleStatusChange = (newStat) => {
+    setCurrentStatus(newStat);
+    updateOrderStatus(order.id, newStat, {
+      courierPartner,
+      trackingNumber,
+      notes: adminNotes,
+      dispatchDate: newStat === "Dispatched" ? (order.dispatchInfo?.dispatchDate || new Date().toISOString().split("T")[0]) : order.dispatchInfo?.dispatchDate
+    });
+  };
+
   const handleSaveStatusAndDispatch = () => {
     updateOrderStatus(order.id, currentStatus, {
       courierPartner,
@@ -50,7 +60,7 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
       notes: adminNotes,
       dispatchDate: currentStatus === "Dispatched" ? (order.dispatchInfo?.dispatchDate || new Date().toISOString().split("T")[0]) : order.dispatchInfo?.dispatchDate
     });
-    showToast(`Order #${order.id} status updated to ${currentStatus}!`, "success");
+    showToast(`Order #${order.id} dispatch details saved!`, "success");
   };
 
   const handleWhatsAppConfirm = () => {
@@ -254,15 +264,55 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
                   <span>Manage Order Status & Dispatch</span>
                 </h4>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {/* Status Dropdown */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {/* 1-Click Quick Status Pills */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      Instant 1-Click Status Update:
+                    </label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {[
+                        { key: "New", label: "🟡 New", color: "var(--accent-ruby)", bg: "rgba(244, 63, 94, 0.12)" },
+                        { key: "Confirmed", label: "🔵 Confirmed", color: "#2563eb", bg: "rgba(59, 130, 246, 0.12)" },
+                        { key: "Dispatched", label: "🟠 Dispatched", color: "#d97706", bg: "rgba(217, 119, 6, 0.12)" },
+                        { key: "Delivered", label: "🟢 Delivered", color: "#0f766e", bg: "rgba(13, 148, 136, 0.12)" },
+                        { key: "Cancelled", label: "🔴 Cancelled", color: "#e11d48", bg: "rgba(225, 29, 72, 0.12)" }
+                      ].map((st) => {
+                        const isSelected = currentStatus === st.key;
+                        return (
+                          <button
+                            key={st.key}
+                            type="button"
+                            onClick={() => handleStatusChange(st.key)}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: "var(--radius-full)",
+                              fontSize: "0.80rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              border: isSelected ? `2px solid ${st.color}` : "1px solid var(--border-subtle)",
+                              background: isSelected ? st.bg : "#ffffff",
+                              color: isSelected ? st.color : "var(--text-secondary)",
+                              boxShadow: isSelected ? `0 2px 8px rgba(0,0,0,0.08)` : "none",
+                              transform: isSelected ? "scale(1.03)" : "scale(1)",
+                              transition: "all 0.15s ease"
+                            }}
+                          >
+                            {st.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Status Dropdown (Auto-Saves on Change) */}
                   <div>
                     <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>
-                      Order Status
+                      Status Selector
                     </label>
                     <select
                       value={currentStatus}
-                      onChange={(e) => setCurrentStatus(e.target.value)}
+                      onChange={(e) => handleStatusChange(e.target.value)}
                       className="input-field"
                       style={{ fontWeight: 700 }}
                     >
@@ -274,7 +324,7 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
                     </select>
                   </div>
 
-                  {/* Courier Partner */}
+                  {/* Courier Partner & AWB */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                     <div>
                       <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>
@@ -319,10 +369,10 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
                   <button
                     onClick={handleSaveStatusAndDispatch}
                     className="btn btn-gold btn-sm"
-                    style={{ width: "100%", marginTop: "6px" }}
+                    style={{ width: "100%", marginTop: "4px" }}
                   >
                     <Save size={15} />
-                    <span>Save Changes</span>
+                    <span>Save Dispatch & Tracking Details</span>
                   </button>
                 </div>
               </div>
