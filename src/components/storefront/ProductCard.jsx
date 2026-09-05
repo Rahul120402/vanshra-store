@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getTotalStock, getStockBadgeInfo } from "../../utils/formatters";
+import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { Heart, Eye, Check, ShoppingBag } from "lucide-react";
 
 export const ProductCard = ({ product }) => {
@@ -73,7 +73,7 @@ export const ProductCard = ({ product }) => {
         position: "relative",
         width: "100%",
         paddingTop: "125%",
-        background: "#1c1917",
+        background: "linear-gradient(135deg, #f7f3eb 0%, #ece5d8 100%)",
         overflow: "hidden"
       }}>
         {/* Main & Secondary Image on hover (instant switch on cursor hover) */}
@@ -81,9 +81,15 @@ export const ProductCard = ({ product }) => {
           src={
             isHovered && product.images?.length > 1
               ? product.images[1]
-              : product.images?.[0] || ""
+              : product.images?.[0] || FALLBACK_PRODUCT_IMAGE
           }
           alt={product.name}
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+              e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+            }
+          }}
           style={{
             position: "absolute",
             inset: 0,
@@ -100,6 +106,7 @@ export const ProductCard = ({ product }) => {
           <img
             src={product.images[1]}
             alt=""
+            referrerPolicy="no-referrer"
             aria-hidden="true"
             style={{ display: "none" }}
           />

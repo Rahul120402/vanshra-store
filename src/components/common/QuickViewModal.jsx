@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getStockBadgeInfo } from "../../utils/formatters";
+import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { X, ShoppingBag, Heart, ChevronRight, Ruler } from "lucide-react";
 
 export const QuickViewModal = () => {
@@ -106,8 +106,14 @@ export const QuickViewModal = () => {
               position: "relative"
             }}>
               <img
-                src={quickViewProduct.images?.[selectedImageIdx] || quickViewProduct.images?.[0]}
+                src={quickViewProduct.images?.[selectedImageIdx] || quickViewProduct.images?.[0] || FALLBACK_PRODUCT_IMAGE}
                 alt={quickViewProduct.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                    e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                  }
+                }}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
               
@@ -154,7 +160,17 @@ export const QuickViewModal = () => {
                       flexShrink: 0
                     }}
                   >
-                    <img src={imgUrl} alt="Thumbnail" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img 
+                      src={imgUrl || FALLBACK_PRODUCT_IMAGE} 
+                      alt="Thumbnail" 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                          e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                        }
+                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                    />
                   </button>
                 ))}
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { STANDARD_SIZES } from "../../data/initialData";
-import { compressImage } from "../../utils/formatters";
+import { compressImage, normalizeImageUrl, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { 
   X, 
   Plus, 
@@ -12,7 +12,9 @@ import {
   Save, 
   Palette, 
   Layers,
-  DollarSign
+  DollarSign,
+  AlertCircle,
+  ExternalLink
 } from "lucide-react";
 
 export const ProductFormModal = ({ product, isOpen, onClose }) => {
@@ -72,9 +74,9 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
         category: settings.categories.find((c) => c !== "All") || "Dresses",
         price: "",
         originalPrice: "",
-        sku: `MOH-${Math.floor(100 + Math.random() * 900)}`,
+        sku: `VAN-${Math.floor(100 + Math.random() * 900)}`,
         description: "",
-        fabricCare: "Premium fabric. Dry clean recommended.",
+        fabricCare: "Premium handcrafted fabric. Gentle wash or dry clean recommended.",
         images: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1000&q=80"],
         colors: [{ name: "Classic Onyx", hex: "#1a1a1a" }],
         sizes: { S: 5, M: 8, L: 5, XL: 2, XXL: 0 },
@@ -88,7 +90,9 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
 
   const handleImageChange = (index, value) => {
     const newImages = [...formData.images];
-    newImages[index] = value;
+    // Automatically convert Google Drive / Dropbox / raw URL format
+    const normalized = normalizeImageUrl(value);
+    newImages[index] = normalized || value;
     setFormData((prev) => ({ ...prev, images: newImages }));
   };
 
@@ -469,22 +473,38 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {formData.images.map((imgUrl, idx) => (
                 <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  {imgUrl && (
-                    <img src={imgUrl} alt="Preview" style={{ width: "42px", height: "42px", objectFit: "cover", borderRadius: "var(--radius-xs)", border: "1px solid var(--border-subtle)" }} />
+                  {imgUrl ? (
+                    <div style={{ position: "relative", width: "44px", height: "44px", flexShrink: 0, borderRadius: "var(--radius-xs)", overflow: "hidden", border: "1.5px solid var(--border-gold)", background: "#f8f5ee" }}>
+                      <img 
+                        src={normalizeImageUrl(imgUrl) || imgUrl} 
+                        alt="Preview" 
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                        }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ width: "44px", height: "44px", flexShrink: 0, borderRadius: "var(--radius-xs)", border: "1px dashed var(--border-subtle)", background: "var(--bg-secondary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+                      <ImageIcon size={18} />
+                    </div>
                   )}
                   <input
                     type="url"
-                    placeholder="Image URL (https://...)"
+                    placeholder="Paste Image URL (Google Drive, Imgur, Unsplash, or Direct Web Link)"
                     value={imgUrl}
                     onChange={(e) => handleImageChange(idx, e.target.value)}
+                    onBlur={(e) => handleImageChange(idx, e.target.value)}
                     className="input-field"
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, fontSize: "0.84rem" }}
                   />
                   {formData.images.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveImageField(idx)}
                       style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "6px" }}
+                      title="Remove image"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -492,26 +512,32 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
                 </div>
               ))}
 
-              <button
-                type="button"
-                onClick={handleAddImageField}
-                style={{
-                  background: "transparent",
-                  border: "1px dashed var(--border-subtle)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "8px",
-                  color: "var(--accent-gold)",
-                  cursor: "pointer",
-                  fontSize: "0.82rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px"
-                }}
-              >
-                <Plus size={14} />
-                <span>Add Another Photo URL</span>
-              </button>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "space-between", marginTop: "4px" }}>
+                <button
+                  type="button"
+                  onClick={handleAddImageField}
+                  style={{
+                    background: "transparent",
+                    border: "1px dashed var(--border-gold)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "7px 14px",
+                    color: "var(--accent-gold-dark)",
+                    cursor: "pointer",
+                    fontSize: "0.80rem",
+                    fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Add Another Photo Link</span>
+                </button>
+
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                  💡 Supports Google Drive public links, Dropbox, Imgur, or direct image URLs
+                </span>
+              </div>
             </div>
           </div>
 

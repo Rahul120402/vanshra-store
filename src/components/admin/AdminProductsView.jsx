@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getTotalStock, getStockBadgeInfo } from "../../utils/formatters";
+import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { 
   Plus, 
   Search, 
@@ -153,8 +153,14 @@ export const AdminProductsView = ({ onAddProduct, onEditProduct, onQuickStock })
                   {/* Top Row: Thumbnail, Title, Category, Price */}
                   <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                     <img
-                      src={product.images?.[0] || ""}
+                      src={product.images?.[0] || FALLBACK_PRODUCT_IMAGE}
                       alt={product.name}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                          e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                        }
+                      }}
                       style={{
                         width: "56px",
                         height: "70px",
@@ -294,8 +300,14 @@ export const AdminProductsView = ({ onAddProduct, onEditProduct, onQuickStock })
                         <td style={{ padding: "14px 18px" }}>
                           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                             <img
-                              src={product.images?.[0] || ""}
+                              src={product.images?.[0] || FALLBACK_PRODUCT_IMAGE}
                               alt={product.name}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                                  e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                                }
+                              }}
                               style={{ width: "48px", height: "60px", objectFit: "cover", borderRadius: "var(--radius-xs)", border: "1px solid var(--border-subtle)" }}
                             />
                             <div>

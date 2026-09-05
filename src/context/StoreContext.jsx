@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_SETTINGS } from "../data/initialData";
-import { generateOrderId, getTotalStock } from "../utils/formatters";
+import { generateOrderId, getTotalStock, normalizeImageUrl, FALLBACK_PRODUCT_IMAGE } from "../utils/formatters";
 import { playOrderChime } from "../utils/audio";
 import confetti from "canvas-confetti";
 import { 
@@ -37,7 +37,41 @@ const STORAGE_KEYS = {
   ORDERS: "vanshra_clothing_orders_v2",
   SETTINGS: "vanshra_clothing_settings_v2",
   CART: "vanshra_clothing_cart_v2",
-  WISHLIST: "vanshra_clothing_wishlist_v2"
+  WISHLIST: "vanshra_clothing_wishlist_v2",
+  DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2"
+};
+
+const getDeletedProductIds = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.DELETED_PRODUCT_IDS);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const addDeletedProductId = (id) => {
+  if (!id) return;
+  try {
+    const current = getDeletedProductIds();
+    if (!current.includes(id)) {
+      const updated = [...current, id];
+      localStorage.setItem(STORAGE_KEYS.DELETED_PRODUCT_IDS, JSON.stringify(updated));
+    }
+  } catch {
+    // ignore
+  }
+};
+
+const removeDeletedProductId = (id) => {
+  if (!id) return;
+  try {
+    const current = getDeletedProductIds();
+    const updated = current.filter((x) => x !== id);
+    localStorage.setItem(STORAGE_KEYS.DELETED_PRODUCT_IDS, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
 };
 
 export const normalizeOrder = (order) => {
@@ -129,8 +163,15 @@ export const StoreProvider = ({ children }) => {
   // 1. Core State with LocalStorage initialization
   const [products, setProducts] = useState(() => {
     try {
+      const deletedSet = new Set(getDeletedProductIds());
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((p) => p && p.id && !deletedSet.has(p.id));
+        }
+      }
+      return INITIAL_PRODUCTS.filter((p) => p && p.id && !deletedSet.has(p.id));
     } catch {
       return INITIAL_PRODUCTS;
     }
@@ -654,28 +695,34 @@ export const StoreProvider = ({ children }) => {
 
         if (!isMounted) return;
 
-        if (cloudProducts && cloudProducts.length > 0) {
+        if (cloudProducts && Array.isArray(cloudProducts)) {
+          const deletedSet = new Set(getDeletedProductIds());
+
+          // Clean up any deleted products that still exist in cloud
+          cloudProducts.forEach((p) => {
+            if (p && p.id && deletedSet.has(p.id)) {
+              deleteProductFromCloud(p.id);
+            }
+          });
+
+          const activeCloud = cloudProducts.filter((p) => p && p.id && !deletedSet.has(p.id));
+
           setProducts((prev) => {
             const prodMap = new Map();
-            // 1. First add all products from cloud
-            cloudProducts.forEach((p) => {
-              if (p && p.id) prodMap.set(p.id, p);
-            });
-            // 2. Preserve any local products created on this device not yet returned by cloud
+            // 1. Put all valid cloud products
+            activeCloud.forEach((p) => prodMap.set(p.id, p));
+            // 2. Put local products that are not deleted and not in cloud yet
             prev.forEach((p) => {
-              if (p && p.id && !prodMap.has(p.id)) {
+              if (p && p.id && !deletedSet.has(p.id) && !prodMap.has(p.id)) {
                 prodMap.set(p.id, p);
-                // Attempt to auto-sync to cloud
                 saveProductToCloud(p);
               }
             });
             const merged = Array.from(prodMap.values());
             if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+            safeSetStorage(STORAGE_KEYS.PRODUCTS, merged);
             return merged;
           });
-        } else if (cloudProducts && cloudProducts.length === 0) {
-          // Seed cloud database with initial catalog
-          INITIAL_PRODUCTS.forEach((p) => saveProductToCloud(p));
         }
 
         if (cloudOrders && Array.isArray(cloudOrders)) {
@@ -726,11 +773,19 @@ export const StoreProvider = ({ children }) => {
   // ==================== PRODUCT ACTIONS ====================
 
   const addProduct = (productData) => {
+    const cleanedImages = Array.isArray(productData.images)
+      ? productData.images.map(normalizeImageUrl).filter(Boolean)
+      : [];
+
     const newProduct = {
       ...productData,
       id: `prod-${Date.now()}`,
+      images: cleanedImages.length > 0 ? cleanedImages : [FALLBACK_PRODUCT_IMAGE],
       createdAt: new Date().toISOString()
     };
+
+    removeDeletedProductId(newProduct.id);
+
     setProducts((prev) => {
       const next = [newProduct, ...prev];
       safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
@@ -744,8 +799,14 @@ export const StoreProvider = ({ children }) => {
   };
 
   const updateProduct = (productId, updatedFields) => {
+    let fields = { ...updatedFields };
+    if (Array.isArray(fields.images)) {
+      const cleaned = fields.images.map(normalizeImageUrl).filter(Boolean);
+      fields.images = cleaned.length > 0 ? cleaned : [FALLBACK_PRODUCT_IMAGE];
+    }
+
     setProducts((prev) => {
-      const next = prev.map((prod) => (prod.id === productId ? { ...prod, ...updatedFields } : prod));
+      const next = prev.map((prod) => (prod.id === productId ? { ...prod, ...fields } : prod));
       safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
       const updated = next.find((p) => p.id === productId);
       if (updated && isFirebaseConfigured()) {
@@ -757,6 +818,7 @@ export const StoreProvider = ({ children }) => {
   };
 
   const deleteProduct = (productId) => {
+    addDeletedProductId(productId);
     setProducts((prev) => {
       const next = prev.filter((prod) => prod.id !== productId);
       safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
@@ -1166,9 +1228,18 @@ export const StoreProvider = ({ children }) => {
   };
 
   const resetToDemoData = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.DELETED_PRODUCT_IDS);
+    } catch {}
     setProducts(INITIAL_PRODUCTS);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    if (isFirebaseConfigured()) {
+      INITIAL_PRODUCTS.forEach((p) => saveProductToCloud(p));
+    }
     setOrders(INITIAL_ORDERS);
+    safeSetStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
     setSettings(INITIAL_SETTINGS);
+    safeSetStorage(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
     setCart([]);
     showToast("Reset store to official demo catalog & sample orders!", "info");
   };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getStockBadgeInfo } from "../../utils/formatters";
+import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { createGeneralInquiryUrl } from "../../utils/whatsapp";
 import { ProductCard } from "./ProductCard";
 import { 
@@ -203,8 +203,14 @@ export const ProductDetailPage = () => {
               }}
             >
               <img
-                src={product.images?.[activeImageIdx] || product.images?.[0]}
+                src={product.images?.[activeImageIdx] || product.images?.[0] || FALLBACK_PRODUCT_IMAGE}
                 alt={product.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                    e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                  }
+                }}
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -327,7 +333,17 @@ export const ProductDetailPage = () => {
                       transition: "all var(--transition-fast)"
                     }}
                   >
-                    <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img 
+                      src={imgUrl || FALLBACK_PRODUCT_IMAGE} 
+                      alt={`Thumbnail ${idx + 1}`} 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                          e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                        }
+                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                    />
                   </button>
                 ))}
               </div>
@@ -752,8 +768,14 @@ export const ProductDetailPage = () => {
         <div className="sticky-mobile-cta-bar show-on-mobile-only">
           <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
             <img 
-              src={product.images?.[0] || ""} 
+              src={product.images?.[0] || FALLBACK_PRODUCT_IMAGE} 
               alt={product.name}
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                  e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                }
+              }}
               style={{
                 width: "44px",
                 height: "44px",

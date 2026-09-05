@@ -107,4 +107,54 @@ export const compressImage = (file, maxWidth = 1200, maxHeight = 1500, quality =
     reader.readAsDataURL(file);
   });
 };
+// Fallback luxury placeholder image
+export const FALLBACK_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1000&q=80";
 
+// Smart Image URL Normalizer (Converts Google Drive, Dropbox, Imgur links to direct loadable images)
+export const normalizeImageUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== "string") return "";
+  let url = rawUrl.trim();
+  if (!url) return "";
+
+  // Already base64 data URI, blob, or internal relative path
+  if (url.startsWith("data:image/") || url.startsWith("blob:") || url.startsWith("/")) {
+    return url;
+  }
+
+  // Handle protocol-relative URL
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+
+  // Auto-prepend https if missing protocol
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "https://" + url;
+  }
+
+  // 1. Google Drive direct link conversion
+  // Handles /file/d/{id}/view, ?id={id}, etc.
+  if (url.includes("drive.google.com")) {
+    const gDriveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (gDriveMatch && gDriveMatch[1]) {
+      const fileId = gDriveMatch[1];
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
+    }
+  }
+
+  // 2. Dropbox share link conversion (dl=0 -> raw=1)
+  if (url.includes("dropbox.com")) {
+    url = url.replace("?dl=0", "").replace("&dl=0", "");
+    url += (url.includes("?") ? "&" : "?") + "raw=1";
+    return url;
+  }
+
+  // 3. Imgur link conversion (imgur.com/{id} -> i.imgur.com/{id}.jpg)
+  if (url.includes("imgur.com") && !url.includes("i.imgur.com")) {
+    const imgurMatch = url.match(/imgur\.com\/(?:a\/|gallery\/)?([a-zA-Z0-9]+)/);
+    if (imgurMatch && imgurMatch[1]) {
+      return `https://i.imgur.com/${imgurMatch[1]}.jpg`;
+    }
+  }
+
+  return url;
+};

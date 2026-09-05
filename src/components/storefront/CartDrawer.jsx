@@ -1,6 +1,6 @@
 import React from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
 import { 
   X, 
   Trash2, 
@@ -161,7 +161,17 @@ export const CartDrawer = () => {
                   style={{ width: "62px", height: "76px", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "#0a0c10", flexShrink: 0, cursor: "pointer" }}
                   title="View Product"
                 >
-                  <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img 
+                    src={item.image || FALLBACK_PRODUCT_IMAGE} 
+                    alt={item.name} 
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
+                        e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                      }
+                    }}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                  />
                 </div>
 
                 {/* Details */}
