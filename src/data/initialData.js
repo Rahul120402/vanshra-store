@@ -61,7 +61,7 @@ export const INITIAL_PRODUCTS = [
   {
     id: "prod-2",
     name: "Indigo Block-Print Pure Cotton A-Line Kurti",
-    category: "Daily Comfort",
+    category: "Kurtis",
     price: 1299,
     originalPrice: 1699,
     sku: "VAN-KT-002",
@@ -89,7 +89,7 @@ export const INITIAL_PRODUCTS = [
   {
     id: "prod-3",
     name: "Floral Embroidered Peplum Short Top",
-    category: "Short Tops",
+    category: "Tops",
     price: 999,
     originalPrice: 1399,
     sku: "VAN-TP-003",
@@ -117,7 +117,7 @@ export const INITIAL_PRODUCTS = [
   {
     id: "prod-4",
     name: "Mulberry Silk Angrakha Kurti Set with Pant",
-    category: "Kurti Sets",
+    category: "Co-ords",
     price: 2699,
     originalPrice: 3499,
     sku: "VAN-KS-004",
@@ -146,7 +146,7 @@ export const INITIAL_PRODUCTS = [
   {
     id: "prod-5",
     name: "Boho Pleated Muslin Tunic Top",
-    category: "Tops & Tunics",
+    category: "Tops",
     price: 1149,
     originalPrice: 1499,
     sku: "VAN-TP-005",
@@ -174,7 +174,7 @@ export const INITIAL_PRODUCTS = [
   {
     id: "prod-6",
     name: "Zari Buta Festive Anarkali Kurti",
-    category: "Festive Kurtis",
+    category: "Ethnic Wear",
     price: 2299,
     originalPrice: 2999,
     sku: "VAN-KT-006",

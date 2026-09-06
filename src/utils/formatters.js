@@ -17,7 +17,7 @@ export const formatDate = (dateString) => {
   });
 };
 
-export const generateOrderId = (prefix = "MOH") => {
+export const generateOrderId = (prefix = "VAN") => {
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}-${randomNum}`;
 };

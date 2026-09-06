@@ -168,13 +168,14 @@ export const StoreProvider = ({ children }) => {
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       }
-      return [];
+      const deletedIds = getDeletedProductIds();
+      return INITIAL_PRODUCTS.filter((p) => p && !deletedIds.includes(p.id));
     } catch {
-      return [];
+      return INITIAL_PRODUCTS;
     }
   });
 

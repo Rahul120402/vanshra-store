@@ -200,7 +200,7 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
       category: formData.category,
       price: Number(formData.price),
       originalPrice: formData.originalPrice ? Number(formData.originalPrice) : Number(formData.price),
-      sku: formData.sku || `MOH-${Math.floor(1000 + Math.random() * 9000)}`,
+      sku: formData.sku || `VAN-${Math.floor(1000 + Math.random() * 9000)}`,
       description: formData.description.trim() || "Elegant apparel piece designed with fine tailoring and premium silhouette.",
       fabricCare: formData.fabricCare.trim() || "Dry clean only.",
       images: cleanedImages,
@@ -320,7 +320,7 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
               </label>
               <input
                 type="text"
-                placeholder="MOH-001"
+                placeholder="VAN-001"
                 value={formData.sku}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                 className="input-field"
