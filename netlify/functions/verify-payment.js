@@ -8,7 +8,7 @@ export const handler = async (event) => {
     };
   }
 
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || "w3344JIQnQ9HgcaldDhoxugr";
 
   if (!key_secret) {
     return {

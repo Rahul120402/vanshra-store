@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || "w3344JIQnQ9HgcaldDhoxugr";
 
   if (!key_secret) {
     return res.status(401).json({
