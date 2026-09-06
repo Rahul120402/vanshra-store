@@ -139,6 +139,7 @@ function doPost(e) {
     var custName = customer.fullName || "Valued Customer";
     var rawPhone = customer.phone || "";
     var custPhoneDisplay = formatPhoneDisplay(rawPhone);
+    var custPhoneForSheet = "'" + custPhoneDisplay;
     var custEmail = customer.email || "";
     var custAddress = customer.address || "";
     var custCity = customer.city || "";
@@ -160,7 +161,7 @@ function doPost(e) {
       timestamp,
       orderId,
       custName,
-      custPhoneDisplay,
+      custPhoneForSheet,
       custEmail,
       itemsSummary,
       totalAmount,
@@ -182,8 +183,9 @@ function doPost(e) {
     range.setFontSize(10);
     range.setVerticalAlignment("middle");
     
-    // Format timestamp & currency columns
+    // Format timestamp, phone & currency columns
     sheet.getRange(lastRow, 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+    sheet.getRange(lastRow, 4).setNumberFormat("@");
     sheet.getRange(lastRow, 7).setNumberFormat("₹#,##0.00");
     
     // Alternate row shading
@@ -281,6 +283,9 @@ function initializeHeadersIfNeeded(sheet) {
 
     // Freeze header row so it stays fixed on top when scrolling
     sheet.setFrozenRows(1);
+
+    // Format Column D (Phone / WhatsApp) as Plain Text
+    sheet.getRange(1, 4, sheet.getMaxRows(), 1).setNumberFormat("@");
 
     // Auto-adjust column widths
     for (var col = 1; col <= HEADERS.length; col++) {
