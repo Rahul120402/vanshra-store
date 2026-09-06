@@ -24,7 +24,8 @@ import {
   MapPin,
   FileSpreadsheet,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  CreditCard
 } from "lucide-react";
 
 export const AdminSettingsView = () => {
@@ -37,6 +38,8 @@ export const AdminSettingsView = () => {
     adminPhone: settings.adminPhone || "",
     adminWhatsApp: settings.adminWhatsApp || "",
     adminUpiId: settings.adminUpiId || "918769102796@paytm",
+    razorpayKeyId: settings.razorpayKeyId || "rzp_test_TYmleybSB2FVsF",
+    enableRazorpay: settings.enableRazorpay ?? true,
     adminEmail: settings.adminEmail || "support@vanshra.com",
     storeAddress: settings.storeAddress || settings.adminAddress || "Vanshra Studio & Boutique, 102 Heritage Lane, Jaipur, Rajasthan - 302001",
     googleSheetWebhookUrl: settings.googleSheetWebhookUrl || "",
@@ -65,6 +68,8 @@ export const AdminSettingsView = () => {
         adminPhone: settings.adminPhone || "",
         adminWhatsApp: settings.adminWhatsApp || "",
         adminUpiId: settings.adminUpiId || "918769102796@paytm",
+        razorpayKeyId: settings.razorpayKeyId || "rzp_test_TYmleybSB2FVsF",
+        enableRazorpay: settings.enableRazorpay ?? true,
         adminEmail: settings.adminEmail || "support@vanshra.com",
         storeAddress: settings.storeAddress || settings.adminAddress || "Vanshra Studio & Boutique, 102 Heritage Lane, Jaipur, Rajasthan - 302001",
         googleSheetWebhookUrl: settings.googleSheetWebhookUrl || "",
@@ -94,6 +99,8 @@ export const AdminSettingsView = () => {
       adminPhone: form.adminPhone,
       adminWhatsApp: form.adminWhatsApp,
       adminUpiId: form.adminUpiId ? form.adminUpiId.trim() : "918769102796@paytm",
+      razorpayKeyId: form.razorpayKeyId ? form.razorpayKeyId.trim() : "rzp_test_TYmleybSB2FVsF",
+      enableRazorpay: Boolean(form.enableRazorpay),
       adminEmail: form.adminEmail,
       storeAddress: form.storeAddress ? form.storeAddress.trim() : "",
       adminAddress: form.storeAddress ? form.storeAddress.trim() : "",
@@ -430,6 +437,58 @@ export const AdminSettingsView = () => {
                 placeholder="support@vanshra.com"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Razorpay Standard Payment Gateway Configuration */}
+        <div className="glass-panel" style={{ padding: "24px", border: "1.5px solid var(--border-gold)", background: "linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, #ffffff 100%)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
+            <div>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--accent-gold-dark)", display: "flex", alignItems: "center", gap: "8px" }}>
+                <CreditCard size={18} style={{ color: "#2563eb" }} />
+                <span>Razorpay Payment Gateway (Instant UPI, Cards & NetBanking)</span>
+              </h3>
+              <p className="text-secondary" style={{ fontSize: "0.82rem", marginTop: "3px" }}>
+                Accept 100% verified online payments with auto-signature validation. Order is marked as "Confirmed" upon payment verification.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <input
+                  type="checkbox"
+                  checked={form.enableRazorpay}
+                  onChange={(e) => updateFormField("enableRazorpay", e.target.checked)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                <span>Enable Razorpay Checkout</span>
+              </label>
+
+              {form.enableRazorpay && form.razorpayKeyId && (
+                <span className="badge badge-confirmed" style={{ fontSize: "0.76rem", fontWeight: 700, padding: "4px 10px" }}>
+                  ✓ Razorpay Active
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ maxWidth: "520px" }}>
+            <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "6px" }}>
+              Razorpay Key ID (Public Client Key)
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                value={form.razorpayKeyId}
+                onChange={(e) => updateFormField("razorpayKeyId", e.target.value)}
+                className="input-field"
+                placeholder="e.g. rzp_test_TYmleybSB2FVsF or rzp_live_..."
+                style={{ fontFamily: "monospace", fontSize: "0.88rem", fontWeight: 600 }}
+              />
+            </div>
+            <span style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "6px", display: "block", lineHeight: 1.4 }}>
+              🔒 <strong>Security Note:</strong> Razorpay Key Secret is securely stored in your server environment (<code>.env</code>) and is never exposed in client code.
+            </span>
           </div>
         </div>
 

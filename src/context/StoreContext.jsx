@@ -999,12 +999,15 @@ export const StoreProvider = ({ children }) => {
       return null;
     }
 
-    const orderId = generateOrderId("VAN");
+    const orderId = customerData.orderId || generateOrderId("VAN");
 
     const newOrder = {
       id: orderId,
       createdAt: new Date().toISOString(),
-      status: "New", // "New" | "Confirmed" | "Dispatched" | "Delivered" | "Cancelled"
+      status: customerData.status || "New",
+      paymentMethod: customerData.paymentMethod || "Prepaid (UPI via Razorpay)",
+      razorpayPaymentId: customerData.razorpayPaymentId || "",
+      razorpayOrderId: customerData.razorpayOrderId || "",
       customer: {
         fullName: customerData.fullName,
         phone: customerData.phone,
@@ -1027,7 +1030,6 @@ export const StoreProvider = ({ children }) => {
       subtotal: cartSubtotal,
       shippingFee,
       total: cartTotal,
-      paymentMethod: "Direct WhatsApp / Advance UPI Confirmation",
       dispatchInfo: {
         courierPartner: "",
         trackingNumber: "",

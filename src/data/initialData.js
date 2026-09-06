@@ -13,6 +13,8 @@ export const INITIAL_SETTINGS = {
   adminAddress: "Vanshra Studio & Boutique, 102 Heritage Lane, Jaipur, Rajasthan - 302001",
   googleSheetWebhookUrl: "https://script.google.com/macros/s/AKfycbyoKZe4OO-FpZuE4dsqVSfctOtlZply2UGH4y5QgTm7FnVLOzmBU9QL64DC4vojxvFJSQ/exec",
   adminPin: "1234",
+  razorpayKeyId: "rzp_test_TYmleybSB2FVsF",
+  enableRazorpay: true,
   freeShippingThreshold: 1999,
   standardShippingFee: 100,
   announcementText: "",
