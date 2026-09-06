@@ -121,13 +121,14 @@ export const CheckoutModal = () => {
           orderData = await orderResponse.json();
         } else {
           const errBody = await orderResponse.json().catch(() => ({}));
-          throw new Error(errBody.error || `Server responded with status ${orderResponse.status}`);
+          console.warn("[Razorpay Backend create-order failed]:", errBody);
         }
       } catch (backendErr) {
-        console.warn("[Razorpay Backend create-order failed, using client checkout fallback]:", backendErr);
+        console.warn("[Razorpay Backend create-order error]:", backendErr);
       }
 
       const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || settings.razorpayKeyId || "rzp_test_TYmleybSB2FVsF";
+      const fullLogoUrl = typeof window !== "undefined" ? `${window.location.origin}/vanshra-logo.png` : "";
 
       // 3. Configure Razorpay Standard Checkout Options
       const options = {
@@ -136,8 +137,8 @@ export const CheckoutModal = () => {
         currency: orderData?.currency || "INR",
         name: settings.brandName || "VANSHRA",
         description: `Purchase of ${cart.length} item(s) • Handcrafted Apparel`,
-        image: "/vanshra-logo.png",
-        order_id: orderData?.order_id || undefined, // undefined for direct checkout if backend unavailable
+        image: fullLogoUrl,
+        order_id: orderData?.order_id || undefined,
         prefill: {
           name: formData.fullName,
           email: formData.email || "",
