@@ -17,7 +17,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { amount, currency = "INR", receipt, notes = {} } = req.body || {};
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
+    const { amount, currency = "INR", receipt, notes = {} } = body || {};
 
     const numericAmount = Number(amount);
     if (!numericAmount || numericAmount < 100) {
@@ -31,11 +39,13 @@ export default async function handler(req, res) {
       key_secret
     });
 
+    const receiptStr = String(receipt || `rcpt_${Date.now()}`).slice(0, 39);
+
     const orderOptions = {
       amount: Math.round(numericAmount), // in paise
-      currency,
-      receipt: receipt || `rec_${Date.now()}`,
-      notes
+      currency: currency || "INR",
+      receipt: receiptStr,
+      notes: typeof notes === "object" && notes !== null ? notes : {}
     };
 
     const razorpayOrder = await razorpay.orders.create(orderOptions);

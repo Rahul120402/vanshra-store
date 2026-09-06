@@ -16,7 +16,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body || {};
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({
