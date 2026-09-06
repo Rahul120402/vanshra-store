@@ -127,7 +127,7 @@ export const CheckoutModal = () => {
         console.warn("[Razorpay Backend create-order error]:", backendErr);
       }
 
-      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || settings.razorpayKeyId || "rzp_test_TYmleybSB2FVsF";
+      const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || settings.razorpayKeyId || "rzp_live_TYnxFeonLIDmVJ";
       const fullLogoUrl = typeof window !== "undefined" ? `${window.location.origin}/vanshra-logo.png` : "";
 
       // 3. Configure Razorpay Standard Checkout Options

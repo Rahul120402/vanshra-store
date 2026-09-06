@@ -24,8 +24,8 @@ const razorpayApiPlugin = () => ({
           }
 
           const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
-          const key_id = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || 'rzp_test_TYmleybSB2FVsF';
-          const key_secret = env.RAZORPAY_KEY_SECRET || 'w3344JIQnQ9HgcaldDhoxugr';
+          const key_id = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TYnxFeonLIDmVJ';
+          const key_secret = env.RAZORPAY_KEY_SECRET || '0Vpjg7yJ46lZXRrJVSFAZEA0';
 
           res.setHeader('Content-Type', 'application/json');
 

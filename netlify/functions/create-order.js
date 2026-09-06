@@ -8,8 +8,8 @@ export const handler = async (event) => {
     };
   }
 
-  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TYmleybSB2FVsF";
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || "w3344JIQnQ9HgcaldDhoxugr";
+  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_live_TYnxFeonLIDmVJ";
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || "0Vpjg7yJ46lZXRrJVSFAZEA0";
 
   if (!key_id || !key_secret) {
     return {
