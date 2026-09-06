@@ -21,7 +21,6 @@ export const AdminAuthModal = ({ isOpen, onClose }) => {
     if (success) {
       setError("");
       setPinInput("");
-      onClose();
       showToast("Access granted. Welcome to Vanshra Owner Portal.", "success");
     } else {
       setError("Invalid security passcode. Access denied.");

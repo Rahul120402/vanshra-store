@@ -436,7 +436,7 @@ export const StoreProvider = ({ children }) => {
 
   const closeAdminAuth = () => {
     setIsAdminAuthModalOpen(false);
-    if (window.location.hash === "#admin" && currentView !== "admin") {
+    if (window.location.hash === "#admin" && sessionStorage.getItem("vanshra_admin_auth") !== "true") {
       window.history.pushState(null, "", window.location.pathname);
     }
   };
@@ -1169,7 +1169,11 @@ export const StoreProvider = ({ children }) => {
     if (String(enteredPin).trim() === validPin) {
       setIsAdminAuthenticated(true);
       sessionStorage.setItem("vanshra_admin_auth", "true");
+      setIsAdminAuthModalOpen(false);
       setCurrentView("admin");
+      if (window.location.hash !== "#admin") {
+        window.history.pushState({ modal: "admin" }, "", "#admin");
+      }
       return true;
     }
     return false;
