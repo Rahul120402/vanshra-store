@@ -4,6 +4,7 @@ import { AdminDashboardView } from "./AdminDashboardView";
 import { AdminAnalyticsView } from "./AdminAnalyticsView";
 import { AdminOrdersView } from "./AdminOrdersView";
 import { AdminProductsView } from "./AdminProductsView";
+import { AdminCouponsView } from "./AdminCouponsView";
 import { AdminSettingsView } from "./AdminSettingsView";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { ProductFormModal } from "./ProductFormModal";
@@ -14,6 +15,7 @@ import {
   BarChart3,
   ShoppingBag, 
   Layers, 
+  Tag,
   Settings, 
   MessageCircle, 
   ShieldCheck,
@@ -28,6 +30,7 @@ export const AdminLayout = () => {
     settings, 
     metrics, 
     orders, 
+    coupons,
     selectedOrderForDetail, 
     setSelectedOrderForDetail,
     logoutAdmin
@@ -220,6 +223,7 @@ export const AdminLayout = () => {
               { id: "analytics", label: "Analytics", icon: BarChart3 },
               { id: "orders", label: `Orders (${orders.length})`, icon: ShoppingBag, badge: metrics.newOrdersCount },
               { id: "products", label: "Products & Stock", icon: Layers },
+              { id: "coupons", label: `Coupons (${coupons?.length || 0})`, icon: Tag },
               { id: "settings", label: "Settings", icon: Settings }
             ].map((tab) => {
               const Icon = tab.icon;
@@ -300,6 +304,8 @@ export const AdminLayout = () => {
               onQuickStock={handleOpenQuickStock}
             />
           )}
+
+          {adminTab === "coupons" && <AdminCouponsView />}
 
           {adminTab === "settings" && <AdminSettingsView />}
         </div>

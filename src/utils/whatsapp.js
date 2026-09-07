@@ -40,6 +40,10 @@ export const createCustomerOrderMessage = (order, settings) => {
     ? `Payment Status: ✅ PAID & CONFIRMED (Razorpay ID: ${order?.razorpayPaymentId || "Verified"})`
     : `Payment Mode: Prepaid / UPI`;
 
+  const couponLine = order?.couponCode
+    ? `Coupon Applied: ${order.couponCode} (-${settings?.currencySymbol || "₹"}${order.couponDiscount || 0})\n`
+    : "";
+
   const text = `Hello ${brand} Team,
 
 I have placed an order on your website (Order #${order?.id || ""}).
@@ -47,7 +51,8 @@ I have placed an order on your website (Order #${order?.id || ""}).
 Order Summary:
 ${itemsList}
 
-Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
+Subtotal: ${settings?.currencySymbol || "₹"}${order?.subtotal || order?.total || 0}
+${couponLine}Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
 ${paymentLine}
 
 Delivery Address:

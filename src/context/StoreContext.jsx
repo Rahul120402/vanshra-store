@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_SETTINGS } from "../data/initialData";
+import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_SETTINGS, INITIAL_COUPONS } from "../data/initialData";
 import { generateOrderId, getTotalStock, normalizeImageUrl, FALLBACK_PRODUCT_IMAGE } from "../utils/formatters";
 import { playOrderChime } from "../utils/audio";
 import confetti from "canvas-confetti";
@@ -39,6 +39,7 @@ const STORAGE_KEYS = {
   SETTINGS: "vanshra_clothing_settings_v2",
   CART: "vanshra_clothing_cart_v2",
   WISHLIST: "vanshra_clothing_wishlist_v2",
+  COUPONS: "vanshra_clothing_coupons_v2",
   DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2"
 };
 
@@ -248,6 +249,17 @@ export const StoreProvider = ({ children }) => {
       return [];
     }
   });
+
+  const [coupons, setCoupons] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.COUPONS);
+      return saved ? JSON.parse(saved) : INITIAL_COUPONS;
+    } catch {
+      return INITIAL_COUPONS;
+    }
+  });
+
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
 
   // Admin PIN Authentication & Privacy
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
@@ -645,6 +657,10 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.WISHLIST, wishlist);
   }, [wishlist]);
 
+  useEffect(() => {
+    safeSetStorage(STORAGE_KEYS.COUPONS, coupons);
+  }, [coupons]);
+
   // Multi-tab real-time synchronization (instantly reflects admin changes on open customer storefront tabs)
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -663,6 +679,11 @@ export const StoreProvider = ({ children }) => {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
             setOrders(parsed.map(normalizeOrder).filter(Boolean));
+          }
+        } else if (e.key === STORAGE_KEYS.COUPONS) {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setCoupons(parsed);
           }
         }
       } catch (err) {
@@ -984,12 +1005,143 @@ export const StoreProvider = ({ children }) => {
     });
   };
 
-  // Cart calculations
+  // Cart & Coupon calculations
   const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const isFreeShipping = cartSubtotal >= settings.freeShippingThreshold || cartSubtotal === 0;
+
+  const couponDiscount = appliedCoupon
+    ? (() => {
+        if (cartSubtotal < (appliedCoupon.minOrder || 0)) return 0;
+        if (appliedCoupon.discountType === "percentage") {
+          const calc = Math.round((cartSubtotal * appliedCoupon.value) / 100);
+          return appliedCoupon.maxDiscount ? Math.min(calc, appliedCoupon.maxDiscount) : calc;
+        }
+        return Math.min(appliedCoupon.value, cartSubtotal);
+      })()
+    : 0;
+
+  // Auto-remove appliedCoupon if cart becomes empty or falls below threshold
+  useEffect(() => {
+    if (appliedCoupon && cartSubtotal > 0 && cartSubtotal < (appliedCoupon.minOrder || 0)) {
+      showToast(`Coupon "${appliedCoupon.code}" removed: Minimum order of ₹${appliedCoupon.minOrder} required`, "warning");
+      setAppliedCoupon(null);
+    } else if (appliedCoupon && cartSubtotal === 0) {
+      setAppliedCoupon(null);
+    }
+  }, [cartSubtotal, appliedCoupon]);
+
+  const isFreeShipping = (cartSubtotal - couponDiscount) >= settings.freeShippingThreshold || cartSubtotal === 0;
   const shippingFee = isFreeShipping ? 0 : settings.standardShippingFee;
-  const cartTotal = cartSubtotal + shippingFee;
+  const cartTotal = Math.max(0, cartSubtotal - couponDiscount) + shippingFee;
   const totalCartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // ==================== COUPON ACTIONS ====================
+
+  const applyCoupon = (code) => {
+    if (!code || typeof code !== "string") {
+      showToast("Please enter a coupon code", "warning");
+      return { success: false, message: "Please enter a coupon code" };
+    }
+    const trimmed = code.trim().toUpperCase();
+    const found = coupons.find((c) => c.code.toUpperCase() === trimmed && c.isActive !== false);
+
+    if (!found) {
+      showToast(`Coupon code "${trimmed}" is invalid or expired`, "error");
+      return { success: false, message: `Coupon code "${trimmed}" is invalid or expired` };
+    }
+
+    if (cartSubtotal < (found.minOrder || 0)) {
+      showToast(`Coupon "${trimmed}" requires a minimum order of ₹${found.minOrder}`, "warning");
+      return { success: false, message: `Minimum order of ₹${found.minOrder} required for this coupon` };
+    }
+
+    let discountVal = 0;
+    if (found.discountType === "percentage") {
+      discountVal = Math.round((cartSubtotal * found.value) / 100);
+      if (found.maxDiscount) {
+        discountVal = Math.min(discountVal, found.maxDiscount);
+      }
+    } else {
+      discountVal = Math.min(found.value, cartSubtotal);
+    }
+
+    setAppliedCoupon(found);
+    try {
+      confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
+    } catch {}
+    showToast(`🎉 Coupon "${found.code}" applied! You saved ₹${discountVal}`, "success");
+    return { success: true, coupon: found, discount: discountVal };
+  };
+
+  const removeCoupon = () => {
+    if (appliedCoupon) {
+      showToast(`Coupon "${appliedCoupon.code}" removed`, "info");
+      setAppliedCoupon(null);
+    }
+  };
+
+  const addCoupon = (couponData) => {
+    const newCode = (couponData.code || "").trim().toUpperCase();
+    if (!newCode) {
+      showToast("Coupon code cannot be empty", "error");
+      return false;
+    }
+    if (coupons.some((c) => c.code.toUpperCase() === newCode)) {
+      showToast(`Coupon code "${newCode}" already exists`, "error");
+      return false;
+    }
+    const newCoupon = {
+      id: `cpn-${Date.now()}`,
+      code: newCode,
+      discountType: couponData.discountType || "percentage",
+      value: Number(couponData.value) || 0,
+      minOrder: Number(couponData.minOrder) || 0,
+      maxDiscount: Number(couponData.maxDiscount) || 0,
+      isActive: couponData.isActive !== false,
+      description: couponData.description || ""
+    };
+    setCoupons((prev) => [newCoupon, ...prev]);
+    showToast(`Coupon "${newCode}" added successfully!`, "success");
+    return newCoupon;
+  };
+
+  const updateCoupon = (couponId, fields) => {
+    setCoupons((prev) =>
+      prev.map((c) => {
+        if (c.id === couponId) {
+          const updated = { ...c, ...fields };
+          if (fields.code) updated.code = fields.code.trim().toUpperCase();
+          if (fields.value !== undefined) updated.value = Number(fields.value) || 0;
+          if (fields.minOrder !== undefined) updated.minOrder = Number(fields.minOrder) || 0;
+          if (fields.maxDiscount !== undefined) updated.maxDiscount = Number(fields.maxDiscount) || 0;
+          return updated;
+        }
+        return c;
+      })
+    );
+    showToast("Coupon updated successfully!", "success");
+    return true;
+  };
+
+  const deleteCoupon = (couponId) => {
+    setCoupons((prev) => prev.filter((c) => c.id !== couponId));
+    if (appliedCoupon?.id === couponId) {
+      setAppliedCoupon(null);
+    }
+    showToast("Coupon removed", "info");
+  };
+
+  const toggleCouponStatus = (couponId) => {
+    setCoupons((prev) =>
+      prev.map((c) => {
+        if (c.id === couponId) {
+          const nextStatus = !c.isActive;
+          showToast(`Coupon "${c.code}" is now ${nextStatus ? "Active" : "Inactive"}`, "info");
+          return { ...c, isActive: nextStatus };
+        }
+        return c;
+      })
+    );
+  };
 
   // ==================== ORDER ACTIONS ====================
 
@@ -1028,6 +1180,8 @@ export const StoreProvider = ({ children }) => {
         quantity: item.quantity
       })),
       subtotal: cartSubtotal,
+      couponCode: appliedCoupon?.code || "",
+      couponDiscount: couponDiscount || 0,
       shippingFee,
       total: cartTotal,
       dispatchInfo: {
@@ -1072,8 +1226,9 @@ export const StoreProvider = ({ children }) => {
     // 3. Dispatch order to Google Sheets & Trigger Automatic Emails
     sendOrderToGoogleSheets(updatedOrder, settings);
 
-    // 3. Clear cart and set latest order for success screen
+    // 4. Clear cart, reset coupon and set latest order for success screen
     clearCart();
+    setAppliedCoupon(null);
     setLatestPlacedOrder(newOrder);
     setIsCheckoutOpen(false);
     setIsCartOpen(false);
@@ -1370,13 +1525,22 @@ export const StoreProvider = ({ children }) => {
         setSortBy,
         priceRange,
         setPriceRange,
-        // Cart values
+        // Cart & Coupon values
         cartSubtotal,
+        couponDiscount,
+        appliedCoupon,
+        coupons,
         shippingFee,
         cartTotal,
         totalCartItemCount,
         isFreeShipping,
         // Actions
+        applyCoupon,
+        removeCoupon,
+        addCoupon,
+        updateCoupon,
+        deleteCoupon,
+        toggleCouponStatus,
         addProduct,
         updateProduct,
         deleteProduct,

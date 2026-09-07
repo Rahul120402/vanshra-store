@@ -25,6 +25,8 @@ export const CheckoutModal = () => {
     closeCheckout,
     cart,
     cartSubtotal,
+    couponDiscount,
+    appliedCoupon,
     shippingFee,
     cartTotal,
     settings,
@@ -476,6 +478,16 @@ export const CheckoutModal = () => {
                       <span>{formatCurrency(cartSubtotal, settings.currencySymbol)}</span>
                     </div>
 
+                    {appliedCoupon && couponDiscount > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-emerald-dark)", fontWeight: 700 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <Sparkles size={13} />
+                          <span>Coupon ({appliedCoupon.code})</span>
+                        </span>
+                        <span>-{formatCurrency(couponDiscount, settings.currencySymbol)}</span>
+                      </div>
+                    )}
+
                     <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
                       <span>Express Delivery</span>
                       <span>{shippingFee === 0 ? <strong style={{ color: "var(--accent-emerald)" }}>FREE</strong> : formatCurrency(shippingFee, settings.currencySymbol)}</span>
@@ -572,9 +584,31 @@ export const CheckoutModal = () => {
                   ))}
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1.5px dashed var(--border-gold)", paddingTop: "12px", marginTop: "14px", fontSize: "1.05rem", fontWeight: 800 }}>
-                  <span>Total Payable:</span>
-                  <span className="text-gold-gradient">{formatCurrency(cartTotal, settings.currencySymbol)}</span>
+                <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "12px", marginTop: "14px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.84rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
+                    <span>Bag Subtotal:</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatCurrency(cartSubtotal, settings.currencySymbol)}</span>
+                  </div>
+
+                  {appliedCoupon && couponDiscount > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-emerald-dark)", fontWeight: 700 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Sparkles size={13} />
+                        <span>Promo Code ({appliedCoupon.code}):</span>
+                      </span>
+                      <span>-{formatCurrency(couponDiscount, settings.currencySymbol)}</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
+                    <span>Express Delivery:</span>
+                    <span>{shippingFee === 0 ? <strong style={{ color: "var(--accent-emerald)" }}>FREE</strong> : formatCurrency(shippingFee, settings.currencySymbol)}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1.5px dashed var(--border-gold)", paddingTop: "10px", marginTop: "6px", fontSize: "1.05rem", fontWeight: 800 }}>
+                    <span>Total Payable:</span>
+                    <span className="text-gold-gradient">{formatCurrency(cartTotal, settings.currencySymbol)}</span>
+                  </div>
                 </div>
               </div>
             </div>

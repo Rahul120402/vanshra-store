@@ -206,3 +206,46 @@ export const INITIAL_PRODUCTS = [
 export const INITIAL_ORDERS = [];
 
 export const STANDARD_SIZES = ["S", "M", "L", "XL", "XXL"];
+
+export const INITIAL_COUPONS = [
+  {
+    id: "cpn-1",
+    code: "VANSHRA10",
+    discountType: "percentage",
+    value: 10,
+    minOrder: 999,
+    maxDiscount: 500,
+    isActive: true,
+    description: "10% Instant Discount on handcrafted silhouettes (Orders above ₹999)"
+  },
+  {
+    id: "cpn-2",
+    code: "FESTIVE200",
+    discountType: "flat",
+    value: 200,
+    minOrder: 1499,
+    maxDiscount: 200,
+    isActive: true,
+    description: "Flat ₹200 OFF on festive kurtis & co-ord sets (Orders above ₹1,499)"
+  },
+  {
+    id: "cpn-3",
+    code: "FIRSTBUY",
+    discountType: "flat",
+    value: 150,
+    minOrder: 799,
+    maxDiscount: 150,
+    isActive: true,
+    description: "Welcome Offer: Flat ₹150 OFF on first purchase (Orders above ₹799)"
+  },
+  {
+    id: "cpn-4",
+    code: "ROYAL500",
+    discountType: "flat",
+    value: 500,
+    minOrder: 2999,
+    maxDiscount: 500,
+    isActive: true,
+    description: "Royal Tier: Flat ₹500 OFF on grand boutique orders above ₹2,999"
+  }
+];

@@ -401,9 +401,28 @@ export const OrderDetailModal = ({ order, isOpen, onClose }) => {
                   ))}
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "12px", fontSize: "0.88rem", color: "var(--text-secondary)" }}>
-                  <span>Subtotal: {formatCurrency(order.subtotal, settings.currencySymbol)}</span>
-                  <span>Shipping: {order.shippingFee === 0 ? "FREE" : formatCurrency(order.shippingFee, settings.currencySymbol)}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingTop: "12px", fontSize: "0.88rem", color: "var(--text-secondary)", borderTop: "1px dashed var(--border-subtle)", marginTop: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Subtotal:</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{formatCurrency(order.subtotal, settings.currencySymbol)}</span>
+                  </div>
+
+                  {order.couponCode && (
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-emerald-dark)", fontWeight: 700 }}>
+                      <span>Coupon ({order.couponCode}):</span>
+                      <span>-{formatCurrency(order.couponDiscount || 0, settings.currencySymbol)}</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Shipping:</span>
+                    <span>{order.shippingFee === 0 ? "FREE" : formatCurrency(order.shippingFee, settings.currencySymbol)}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1rem", fontWeight: 800, color: "var(--accent-gold-dark)", borderTop: "1px solid var(--border-subtle)", paddingTop: "8px" }}>
+                    <span>Total:</span>
+                    <span>{formatCurrency(order.total, settings.currencySymbol)}</span>
+                  </div>
                 </div>
               </div>
 
