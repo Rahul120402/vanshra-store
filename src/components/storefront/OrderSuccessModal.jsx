@@ -42,6 +42,12 @@ export const OrderSuccessModal = () => {
 
   const upiId = settings.adminUpiId || "918769102796@paytm";
 
+  const isPaid = Boolean(
+    latestPlacedOrder.razorpayPaymentId || 
+    latestPlacedOrder.status === "Confirmed" ||
+    latestPlacedOrder.paymentMethod?.includes("Razorpay")
+  );
+
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div
@@ -75,8 +81,8 @@ export const OrderSuccessModal = () => {
           <CheckCircle2 size={30} />
         </div>
 
-        <span style={{ fontSize: "clamp(0.70rem, 1.8vw, 0.78rem)", letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--accent-gold-dark)", fontWeight: 800 }}>
-          Order Successfully Recorded
+        <span style={{ fontSize: "clamp(0.70rem, 1.8vw, 0.78rem)", letterSpacing: "0.10em", textTransform: "uppercase", color: isPaid ? "var(--accent-emerald)" : "var(--accent-gold-dark)", fontWeight: 800 }}>
+          {isPaid ? "✓ Payment Verified & Order Confirmed" : "Order Successfully Recorded"}
         </span>
 
         <h2 className="font-serif" style={{ fontSize: "clamp(1.3rem, 4vw, 1.65rem)", color: "var(--text-primary)", marginTop: "2px", marginBottom: "4px" }}>
@@ -84,8 +90,47 @@ export const OrderSuccessModal = () => {
         </h2>
 
         <p className="text-secondary" style={{ fontSize: "clamp(0.82rem, 2vw, 0.88rem)", marginBottom: "18px", lineHeight: 1.5 }}>
-          Thank you, <strong>{latestPlacedOrder.customer?.fullName || "Valued Customer"}</strong>! Tap below to send your order on WhatsApp to confirm sizing and receive the UPI payment QR code for same-day dispatch.
+          {isPaid ? (
+            <>
+              Thank you, <strong>{latestPlacedOrder.customer?.fullName || "Valued Customer"}</strong>! Your online payment of <strong>{formatCurrency(latestPlacedOrder.total, settings.currencySymbol)}</strong> has been verified and received. Your order is confirmed for express dispatch.
+            </>
+          ) : (
+            <>
+              Thank you, <strong>{latestPlacedOrder.customer?.fullName || "Valued Customer"}</strong>! Tap below to send your order on WhatsApp to confirm sizing and receive the UPI payment details for same-day dispatch.
+            </>
+          )}
         </p>
+
+        {/* Paid Details Box if Paid */}
+        {isPaid && (
+          <div style={{
+            background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, #ffffff 100%)",
+            border: "1.5px solid var(--accent-emerald)",
+            borderRadius: "var(--radius-sm)",
+            padding: "12px 14px",
+            textAlign: "left",
+            fontSize: "0.80rem",
+            marginBottom: "18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 700, color: "var(--accent-emerald)" }}>Payment Status:</span>
+              <span className="badge badge-confirmed" style={{ fontSize: "0.72rem", padding: "2px 8px" }}>PAID & VERIFIED</span>
+            </div>
+            {latestPlacedOrder.razorpayPaymentId && (
+              <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)", fontSize: "0.76rem" }}>
+                <span>Razorpay Payment ID:</span>
+                <span style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--text-primary)" }}>{latestPlacedOrder.razorpayPaymentId}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)", fontSize: "0.76rem" }}>
+              <span>Payment Mode:</span>
+              <span style={{ fontWeight: 600 }}>Prepaid (Razorpay UPI / Cards)</span>
+            </div>
+          </div>
+        )}
 
         {/* 3-Step Process Guide */}
         <div style={{
@@ -101,16 +146,16 @@ export const OrderSuccessModal = () => {
           marginBottom: "18px"
         }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-            <span style={{ width: "18px", height: "18px", borderRadius: "50%", background: "var(--accent-gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.68rem", flexShrink: 0, marginTop: "1px" }}>1</span>
-            <span>Send order details via WhatsApp (1-Click button below)</span>
+            <span style={{ width: "18px", height: "18px", borderRadius: "50%", background: isPaid ? "var(--accent-emerald)" : "var(--accent-gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.68rem", flexShrink: 0, marginTop: "1px" }}>✓</span>
+            <span>{isPaid ? "Payment received & order confirmed" : "Order received on store"}</span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
             <span style={{ width: "18px", height: "18px", borderRadius: "50%", background: "var(--accent-gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.68rem", flexShrink: 0, marginTop: "1px" }}>2</span>
-            <span>Our team confirms size & shares UPI QR code</span>
+            <span>Master artisans hand-inspect & pack your garments</span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
             <span style={{ width: "18px", height: "18px", borderRadius: "50%", background: "var(--accent-gold)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.68rem", flexShrink: 0, marginTop: "1px" }}>3</span>
-            <span>Parcel is hand-packed & dispatched with express tracking</span>
+            <span>Parcel is dispatched with express tracking link</span>
           </div>
         </div>
 
@@ -127,8 +172,8 @@ export const OrderSuccessModal = () => {
           fontSize: "0.84rem"
         }}>
           <div>
-            <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>Total Payable</div>
-            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+            <div style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>{isPaid ? "Amount Paid" : "Total Payable"}</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: isPaid ? "var(--accent-emerald)" : "var(--text-primary)" }}>
               {formatCurrency(latestPlacedOrder.total, settings.currencySymbol)}
             </div>
           </div>
@@ -140,47 +185,49 @@ export const OrderSuccessModal = () => {
           </div>
         </div>
 
-        {/* Official UPI ID for Instant Payment */}
-        <div style={{
-          background: "linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, #ffffff 100%)",
-          border: "1.5px solid var(--border-gold)",
-          borderRadius: "var(--radius-sm)",
-          padding: "12px 14px",
-          marginBottom: "18px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "10px",
-          textAlign: "left"
-        }}>
-          <div>
-            <div style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 800, color: "var(--accent-gold-dark)", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "5px" }}>
-              <QrCode size={13} />
-              <span>Official UPI ID for Payment</span>
+        {/* Only show UPI ID for Unpaid / Manual orders */}
+        {!isPaid && (
+          <div style={{
+            background: "linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, #ffffff 100%)",
+            border: "1.5px solid var(--border-gold)",
+            borderRadius: "var(--radius-sm)",
+            padding: "12px 14px",
+            marginBottom: "18px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "10px",
+            textAlign: "left"
+          }}>
+            <div>
+              <div style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 800, color: "var(--accent-gold-dark)", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "5px" }}>
+                <QrCode size={13} />
+                <span>Official UPI ID for Payment</span>
+              </div>
+              <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "2px", fontFamily: "monospace" }}>
+                {upiId}
+              </div>
             </div>
-            <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "2px", fontFamily: "monospace" }}>
-              {upiId}
-            </div>
-          </div>
 
-          <button
-            onClick={handleCopyUpi}
-            className="btn btn-secondary btn-sm"
-            style={{ 
-              height: "34px", 
-              padding: "0 12px", 
-              fontSize: "0.76rem", 
-              fontWeight: 700,
-              gap: "4px",
-              borderColor: isCopied ? "var(--accent-emerald)" : "var(--border-gold)",
-              color: isCopied ? "var(--accent-emerald)" : "var(--accent-gold-dark)"
-            }}
-            title="Copy UPI ID"
-          >
-            {isCopied ? <Check size={14} /> : <Copy size={13} />}
-            <span>{isCopied ? "Copied!" : "Copy UPI"}</span>
-          </button>
-        </div>
+            <button
+              onClick={handleCopyUpi}
+              className="btn btn-secondary btn-sm"
+              style={{ 
+                height: "34px", 
+                padding: "0 12px", 
+                fontSize: "0.76rem", 
+                fontWeight: 700,
+                gap: "4px",
+                borderColor: isCopied ? "var(--accent-emerald)" : "var(--border-gold)",
+                color: isCopied ? "var(--accent-emerald)" : "var(--accent-gold-dark)"
+              }}
+              title="Copy UPI ID"
+            >
+              {isCopied ? <Check size={14} /> : <Copy size={13} />}
+              <span>{isCopied ? "Copied!" : "Copy UPI"}</span>
+            </button>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -190,7 +237,7 @@ export const OrderSuccessModal = () => {
             style={{ width: "100%", justifyContent: "center", gap: "8px", fontSize: "0.92rem", padding: "12px" }}
           >
             <MessageCircle size={18} />
-            <span>Send Order on WhatsApp</span>
+            <span>{isPaid ? "Share Order Receipt on WhatsApp" : "Send Order on WhatsApp"}</span>
           </button>
 
           <button

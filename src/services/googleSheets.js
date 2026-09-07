@@ -33,7 +33,10 @@ export const sendOrderToGoogleSheets = async (order, settings) => {
       subtotal: order.subtotal || 0,
       shippingFee: order.shippingFee || 0,
       total: order.total || 0,
-      paymentMethod: order.paymentMethod || "Prepaid (UPI)",
+      paymentMethod: order.paymentMethod || "Prepaid (Razorpay)",
+      razorpayPaymentId: order.razorpayPaymentId || "",
+      razorpayOrderId: order.razorpayOrderId || "",
+      isPaid: Boolean(order.razorpayPaymentId || order.status === "Confirmed"),
       settings: {
         brandName: settings?.brandName || "VANSHRA",
         tagline: settings?.tagline || "Crafted for Comfort, Worn with Grace",

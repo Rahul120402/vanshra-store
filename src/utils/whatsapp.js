@@ -34,6 +34,11 @@ export const createCustomerOrderMessage = (order, settings) => {
   const custState = order?.customer?.state || "";
   const custPin = order?.customer?.pincode || "";
   const custNotes = order?.customer?.notes || "";
+  const isPaid = Boolean(order?.razorpayPaymentId || order?.status === "Confirmed");
+
+  const paymentLine = isPaid
+    ? `Payment Status: ✅ PAID & CONFIRMED (Razorpay ID: ${order?.razorpayPaymentId || "Verified"})`
+    : `Payment Mode: Prepaid / UPI`;
 
   const text = `Hello ${brand} Team,
 
@@ -43,20 +48,21 @@ Order Summary:
 ${itemsList}
 
 Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
+${paymentLine}
 
 Delivery Address:
 Name: ${custName}
 Phone: ${custPhone}
 Address: ${custAddr}, ${custCity}, ${custState} - ${custPin}
 ${custNotes ? `Note: ${custNotes}\n` : ""}
-Please verify my order and confirm dispatch. Thank you!`;
+${isPaid ? "My payment has been completed online. Please verify my order and confirm dispatch. Thank you!" : "Please verify my order and confirm dispatch. Thank you!"}`;
 
   const adminPhone = cleanPhone(settings?.adminWhatsApp || "918769102796");
   return `https://wa.me/${adminPhone}?text=${encodeURIComponent(text)}`;
 };
 
 /**
- * Admin sending Order Confirmation & UPI Payment details to customer
+ * Admin sending Order Confirmation details to customer
  */
 export const createAdminConfirmMessage = (order, settings) => {
   const customerPhone = cleanPhone(order?.customer?.phone);
@@ -67,6 +73,21 @@ export const createAdminConfirmMessage = (order, settings) => {
 
   const brand = settings?.brandName || "VANSHRA";
   const upiId = settings?.adminUpiId || "918769102796@paytm";
+  const isPaid = Boolean(order?.razorpayPaymentId || order?.status === "Confirmed");
+
+  let paymentSection = "";
+  if (isPaid) {
+    paymentSection = `Payment Status: ✅ PAID & CONFIRMED (${settings?.currencySymbol || "₹"}${order?.total || 0} received via Razorpay)
+Razorpay Payment ID: ${order?.razorpayPaymentId || "Verified"}
+
+Your order has been confirmed and is currently being packed for express priority dispatch!`;
+  } else {
+    paymentSection = `To confirm your order and initiate same-day dispatch, please complete the payment via UPI:
+UPI ID: ${upiId}
+Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
+
+Please reply with a payment screenshot once completed so our team can immediately pack and dispatch your parcel.`;
+  }
 
   const text = `Hello ${custName},
 
@@ -79,11 +100,9 @@ Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
 Delivery Address:
 ${order?.customer?.address || ""}, ${order?.customer?.city || ""}, ${order?.customer?.state || ""} - ${order?.customer?.pincode || ""}
 
-To confirm your order and initiate same-day dispatch, please complete the payment via UPI:
-UPI ID: ${upiId}
-Total Amount: ${settings?.currencySymbol || "₹"}${order?.total || 0}
+${paymentSection}
 
-Please reply with a payment screenshot once completed so our team can immediately pack and dispatch your parcel. Thank you!
+Thank you!
 
 - Team ${brand}`;
 

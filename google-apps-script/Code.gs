@@ -156,6 +156,12 @@ function doPost(e) {
       return (idx + 1) + ". " + item.name + " [Size: " + (item.size || "Free") + ", Qty: " + (item.quantity || 1) + "] - ₹" + (item.price || 0);
     }).join("\n");
 
+    var razorpayPaymentId = data.razorpayPaymentId || "";
+    var isPaid = Boolean(data.isPaid || razorpayPaymentId || status === "Confirmed");
+    var paymentModeDisplay = isPaid 
+      ? ("Prepaid (Razorpay" + (razorpayPaymentId ? " - " + razorpayPaymentId : "") + ")") 
+      : paymentMethod;
+
     // Append Order Row to Spreadsheet
     var newRow = [
       timestamp,
@@ -165,13 +171,13 @@ function doPost(e) {
       custEmail,
       itemsSummary,
       totalAmount,
-      paymentMethod,
+      paymentModeDisplay,
       custAddress,
       custCity,
       custState,
       custPincode,
       custNotes,
-      status
+      isPaid ? "Confirmed" : status
     ];
 
     sheet.appendRow(newRow);
@@ -215,7 +221,9 @@ function doPost(e) {
       customer: customer,
       items: items,
       total: totalAmount,
-      paymentMethod: paymentMethod,
+      paymentMethod: paymentModeDisplay,
+      razorpayPaymentId: razorpayPaymentId,
+      isPaid: isPaid,
       notes: custNotes,
       adminWhatsApp: adminWhatsApp
     });
@@ -236,6 +244,8 @@ function doPost(e) {
         address: custAddress + ", " + custCity + ", " + custState + " - " + custPincode,
         adminWhatsApp: adminWhatsApp,
         adminUpiId: adminUpiId,
+        razorpayPaymentId: razorpayPaymentId,
+        isPaid: isPaid,
         storeAddress: storeAddress
       });
     }
@@ -338,6 +348,18 @@ function sendOwnerAlertEmail(params) {
           '<div style="text-align: right;"><span style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Total Payable</span><div style="font-size: 20px; font-weight: 800; color: #111827;">' + params.currency + params.total + '</div></div>' +
         '</div>' +
 
+        '<!-- Payment Status Badge -->' +
+        (params.isPaid ? 
+          '<div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; color: #065f46;">' +
+            '<strong>✅ PAYMENT STATUS: PAID & VERIFIED ONLINE</strong><br/>' +
+            '<span style="font-size: 12px; color: #047857;">Mode: Prepaid (Razorpay)' + (params.razorpayPaymentId ? ' • Payment ID: <code style="background: #ffffff; padding: 2px 6px; border-radius: 4px; border: 1px solid #10b981;">' + params.razorpayPaymentId + '</code>' : '') + '</span>' +
+          '</div>' : 
+          '<div style="background: #fef3c7; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; color: #92400e;">' +
+            '<strong>⏳ PAYMENT STATUS: PENDING (MANUAL UPI)</strong><br/>' +
+            '<span style="font-size: 12px;">Customer will send payment to UPI ID: ' + (params.adminUpiId || "N/A") + '</span>' +
+          '</div>'
+        ) +
+
         '<!-- Customer Details Card -->' +
         '<div style="background: #fdfbf7; border: 1px solid #e7e0d3; border-radius: 8px; padding: 16px; margin-bottom: 20px;">' +
           '<h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #92400e; margin: 0 0 10px 0; font-weight: 800;">👤 Customer Information</h3>' +
@@ -385,7 +407,7 @@ function sendOwnerAlertEmail(params) {
 
   MailApp.sendEmail({
     to: params.adminEmail,
-    subject: "🚨 New Order Alert #" + params.orderId + " from " + (params.customer.fullName || "Customer") + " (" + params.currency + params.total + ")",
+    subject: (params.isPaid ? "✅ [PAID] " : "🚨 [NEW] ") + "Order #" + params.orderId + " from " + (params.customer.fullName || "Customer") + " (" + params.currency + params.total + ")",
     htmlBody: htmlBody
   });
 }
@@ -426,18 +448,33 @@ function sendCustomerConfirmationEmail(params) {
           'We have received your order <strong>#' + params.orderId + '</strong>. Our master artisans are preparing your silhouettes with utmost care and precision.' +
         '</p>' +
 
-        '<!-- UPI Payment Box -->' +
-        '<div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, #ffffff 100%); border: 1.5px solid #d4af37; border-radius: 10px; padding: 18px; margin-bottom: 24px;">' +
-          '<div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #b45309; letter-spacing: 0.05em; margin-bottom: 4px;">' +
-            '💳 UPI Payment Details' +
-          '</div>' +
-          '<div style="font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 6px;">' +
-            'UPI ID: <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px dashed #d4af37; border-radius: 4px; color: #b45309;">' + params.adminUpiId + '</span>' +
-          '</div>' +
-          '<div style="font-size: 13px; color: #4b5563; line-height: 1.5;">' +
-            'Please complete the payment of <strong>' + params.currency + params.total + '</strong> via UPI and share a screenshot on our official WhatsApp for priority express dispatch.' +
-          '</div>' +
-        '</div>' +
+        '<!-- Payment Box -->' +
+        (params.isPaid ? 
+          '<!-- Payment Verified Box -->' +
+          '<div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, #ffffff 100%); border: 1.5px solid #10b981; border-radius: 10px; padding: 18px; margin-bottom: 24px;">' +
+            '<div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #047857; letter-spacing: 0.05em; margin-bottom: 4px;">' +
+              '✅ Payment Verified & Received' +
+            '</div>' +
+            '<div style="font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 6px;">' +
+              'Paid Online via Razorpay' + (params.razorpayPaymentId ? ' &bull; <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px solid #10b981; border-radius: 4px; color: #047857; font-size: 13px;">ID: ' + params.razorpayPaymentId + '</span>' : '') +
+            '</div>' +
+            '<div style="font-size: 13px; color: #374151; line-height: 1.5;">' +
+              'We have received your full online payment of <strong>' + params.currency + params.total + '</strong>. Your order is confirmed and our master artisans have begun preparing your garments for express dispatch.' +
+            '</div>' +
+          '</div>' : 
+          '<!-- UPI Payment Box (Unpaid Orders) -->' +
+          '<div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, #ffffff 100%); border: 1.5px solid #d4af37; border-radius: 10px; padding: 18px; margin-bottom: 24px;">' +
+            '<div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #b45309; letter-spacing: 0.05em; margin-bottom: 4px;">' +
+              '💳 UPI Payment Details' +
+            '</div>' +
+            '<div style="font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 6px;">' +
+              'UPI ID: <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px dashed #d4af37; border-radius: 4px; color: #b45309;">' + params.adminUpiId + '</span>' +
+            '</div>' +
+            '<div style="font-size: 13px; color: #4b5563; line-height: 1.5;">' +
+              'Please complete the payment of <strong>' + params.currency + params.total + '</strong> via UPI for priority express dispatch.' +
+            '</div>' +
+          '</div>'
+        ) +
 
         '<!-- Items Table -->' +
         '<h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #111827; margin: 0 0 12px 0; font-weight: 800;">Order Receipt</h3>' +
