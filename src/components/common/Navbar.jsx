@@ -44,10 +44,10 @@ export const Navbar = () => {
   }, [totalCartItemCount]);
 
   return (
-    <header style={{
+    <header className="storefront-header" style={{
       position: "sticky",
       top: 0,
-      zIndex: 100,
+      zIndex: 999,
       width: "100%",
       maxWidth: "100vw",
       background: isScrolled 
