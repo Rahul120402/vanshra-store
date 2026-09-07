@@ -1,0 +1,7 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /#admin
+
+# XML Sitemap
+Sitemap: https://vanshra-store.vercel.app/sitemap.xml
