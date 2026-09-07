@@ -24,9 +24,9 @@ export const OrderTrackingModal = () => {
     setSearchAttempted(true);
     const found = orders.find(
       (o) =>
-        o.id.toUpperCase() === query ||
-        o.customer.phone.replace(/[^0-9]/g, "").includes(query.replace(/[^0-9]/g, "")) ||
-        (o.customer.email && o.customer.email.toLowerCase() === searchInput.trim().toLowerCase())
+        o.id?.toUpperCase() === query ||
+        (o.customer?.phone && o.customer.phone.replace(/[^0-9]/g, "").includes(query.replace(/[^0-9]/g, ""))) ||
+        (o.customer?.email && o.customer.email.toLowerCase() === searchInput.trim().toLowerCase())
     );
     setSearchedOrder(found || null);
   };
