@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
+import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE, sortProductSizes } from "../../utils/formatters";
 import { X, ShoppingBag, ChevronRight, Ruler } from "lucide-react";
 
 export const QuickViewModal = () => {
@@ -24,9 +24,10 @@ export const QuickViewModal = () => {
       setSelectedImageIdx(0);
       setSelectedColor(quickViewProduct.colors?.[0] || null);
       
-      // Auto-select first available in-stock size
-      const availableSize = Object.keys(quickViewProduct.sizes || {}).find(
-        (size) => (quickViewProduct.sizes[size] || 0) > 0
+      // Auto-select first available in-stock size in standard order
+      const sortedSizes = sortProductSizes(quickViewProduct.sizes || {});
+      const availableSize = Object.keys(sortedSizes).find(
+        (size) => (sortedSizes[size] || 0) > 0
       );
       setSelectedSize(availableSize || "");
       setQuantity(1);
@@ -240,7 +241,7 @@ export const QuickViewModal = () => {
               </div>
 
               <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {Object.entries(quickViewProduct.sizes || {}).map(([size, count]) => {
+                {Object.entries(sortProductSizes(quickViewProduct.sizes || {})).map(([size, count]) => {
                   const stockNum = Number(count) || 0;
                   const isOutOfStock = stockNum === 0;
                   const isSelected = selectedSize === size;

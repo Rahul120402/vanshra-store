@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
+import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE, sortProductSizes } from "../../utils/formatters";
 import { createGeneralInquiryUrl } from "../../utils/whatsapp";
 import { ProductCard } from "./ProductCard";
 import { 
@@ -55,9 +55,10 @@ export const ProductDetailPage = () => {
       setActiveImageIdx(0);
       setSelectedColor(product.colors?.[0] || null);
       
-      // Auto-select first in-stock size
-      const firstAvailableSize = Object.keys(product.sizes || {}).find(
-        (size) => (product.sizes[size] || 0) > 0
+      // Auto-select first in-stock size in standard order
+      const sortedSizes = sortProductSizes(product.sizes || {});
+      const firstAvailableSize = Object.keys(sortedSizes).find(
+        (size) => (sortedSizes[size] || 0) > 0
       );
       setSelectedSize(firstAvailableSize || "");
       setQuantity(1);
@@ -478,7 +479,7 @@ export const ProductDetailPage = () => {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px" }}>
-                {Object.entries(product.sizes || {}).map(([size, count]) => {
+                {Object.entries(sortProductSizes(product.sizes || {})).map(([size, count]) => {
                   const stockNum = Number(count) || 0;
                   const isOutOfStock = stockNum === 0;
                   const isSelected = selectedSize === size;

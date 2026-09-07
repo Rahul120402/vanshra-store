@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
+import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE, sortProductSizes } from "../../utils/formatters";
 import { Eye, Check, ShoppingBag } from "lucide-react";
 
 export const ProductCard = ({ product }) => {
@@ -46,8 +46,9 @@ export const ProductCard = ({ product }) => {
 
   const handleQuickAddDirect = (e) => {
     e.stopPropagation();
-    const inStockSize = Object.keys(product.sizes || {}).find(
-      (s) => (Number(product.sizes[s]) || 0) > 0
+    const sortedSizes = sortProductSizes(product.sizes || {});
+    const inStockSize = Object.keys(sortedSizes).find(
+      (s) => (Number(sortedSizes[s]) || 0) > 0
     );
 
     if (!inStockSize) {
@@ -325,7 +326,7 @@ export const ProductCard = ({ product }) => {
           </div>
 
           <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-            {Object.entries(product.sizes || {}).map(([size, count]) => {
+            {Object.entries(sortProductSizes(product.sizes || {})).map(([size, count]) => {
               const stockNum = Number(count) || 0;
               const isOut = stockNum === 0;
               const isJustAdded = justAddedSize === size;

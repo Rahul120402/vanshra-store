@@ -22,6 +22,22 @@ export const generateOrderId = (prefix = "VAN") => {
   return `${prefix}-${randomNum}`;
 };
 
+export const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+
+export const sortProductSizes = (sizes) => {
+  if (!sizes || typeof sizes !== "object") return {};
+  const entries = Object.entries(sizes);
+  entries.sort(([a], [b]) => {
+    const idxA = SIZE_ORDER.indexOf(a);
+    const idxB = SIZE_ORDER.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  return Object.fromEntries(entries);
+};
+
 export const getTotalStock = (sizes) => {
   if (!sizes || typeof sizes !== "object") return 0;
   return Object.values(sizes).reduce((sum, count) => sum + (Number(count) || 0), 0);

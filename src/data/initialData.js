@@ -52,11 +52,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Haldi Yellow", hex: "#e5a93c" }
     ],
     sizes: {
+      XXS: 2,
+      XS: 4,
       S: 6,
       M: 10,
       L: 5,
       XL: 3,
-      XXL: 2
+      XXL: 2,
+      XXXL: 1
     },
     createdAt: "2026-08-20T10:00:00.000Z"
   },
@@ -80,11 +83,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Earthy Rust", hex: "#9a3412" }
     ],
     sizes: {
+      XXS: 3,
+      XS: 5,
       S: 8,
       M: 12,
       L: 8,
       XL: 4,
-      XXL: 1
+      XXL: 1,
+      XXXL: 2
     },
     createdAt: "2026-08-21T11:30:00.000Z"
   },
@@ -108,11 +114,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Sage Mint", hex: "#a3b899" }
     ],
     sizes: {
+      XXS: 1,
+      XS: 3,
       S: 5,
       M: 8,
       L: 2,
       XL: 0,
-      XXL: 0
+      XXL: 0,
+      XXXL: 0
     },
     createdAt: "2026-08-22T09:15:00.000Z"
   },
@@ -137,11 +146,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Mustard Gold", hex: "#ca8a04" }
     ],
     sizes: {
+      XXS: 2,
+      XS: 3,
       S: 4,
       M: 7,
       L: 6,
       XL: 3,
-      XXL: 2
+      XXL: 2,
+      XXXL: 1
     },
     createdAt: "2026-08-23T14:20:00.000Z"
   },
@@ -165,11 +177,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Blush Peach", hex: "#fed7aa" }
     ],
     sizes: {
+      XXS: 3,
+      XS: 4,
       S: 7,
       M: 9,
       L: 5,
       XL: 2,
-      XXL: 0
+      XXL: 0,
+      XXXL: 0
     },
     createdAt: "2026-08-24T08:45:00.000Z"
   },
@@ -193,11 +208,14 @@ export const INITIAL_PRODUCTS = [
       { name: "Rani Magenta", hex: "#be185d" }
     ],
     sizes: {
+      XXS: 2,
+      XS: 3,
       S: 5,
       M: 8,
       L: 4,
       XL: 2,
-      XXL: 1
+      XXL: 1,
+      XXXL: 1
     },
     createdAt: "2026-08-24T16:10:00.000Z"
   }
@@ -205,7 +223,7 @@ export const INITIAL_PRODUCTS = [
 
 export const INITIAL_ORDERS = [];
 
-export const STANDARD_SIZES = ["S", "M", "L", "XL", "XXL"];
+export const STANDARD_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
 export const INITIAL_COUPONS = [
   {

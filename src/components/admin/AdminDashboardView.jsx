@@ -1,6 +1,6 @@
 import React from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, formatDate, getTotalStock } from "../../utils/formatters";
+import { formatCurrency, formatDate, getTotalStock, sortProductSizes } from "../../utils/formatters";
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -234,7 +234,7 @@ export const AdminDashboardView = ({ onSelectOrder, onAddProduct, onOpenStockAdj
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: "0.84rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prod.name}</div>
                       <div style={{ display: "flex", gap: "3px", marginTop: "3px", flexWrap: "wrap" }}>
-                        {Object.entries(prod.sizes || {}).map(([sz, cnt]) => (
+                        {Object.entries(sortProductSizes(prod.sizes || {})).map(([sz, cnt]) => (
                           <span
                             key={sz}
                             style={{

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
+import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE, sortProductSizes } from "../../utils/formatters";
 import { 
   Plus, 
   Search, 
@@ -201,7 +201,7 @@ export const AdminProductsView = ({ onAddProduct, onEditProduct, onQuickStock })
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                      {Object.entries(product.sizes || {}).map(([sz, cnt]) => {
+                      {Object.entries(sortProductSizes(product.sizes || {})).map(([sz, cnt]) => {
                         const countNum = Number(cnt) || 0;
                         const isOut = countNum === 0;
 
@@ -278,7 +278,7 @@ export const AdminProductsView = ({ onAddProduct, onEditProduct, onQuickStock })
                     <th style={{ padding: "14px 18px" }}>Product</th>
                     <th style={{ padding: "14px 18px" }}>Category & SKU</th>
                     <th style={{ padding: "14px 18px" }}>Price</th>
-                    <th style={{ padding: "14px 18px" }}>Stock per Size (S/M/L/XL/XXL)</th>
+                    <th style={{ padding: "14px 18px" }}>Stock per Size (XXS - XXXL)</th>
                     <th style={{ padding: "14px 18px" }}>Stock Status</th>
                     <th style={{ padding: "14px 18px", textAlign: "right" }}>Actions</th>
                   </tr>
@@ -351,7 +351,7 @@ export const AdminProductsView = ({ onAddProduct, onEditProduct, onQuickStock })
                         {/* Size Stock Pills */}
                         <td style={{ padding: "14px 18px" }}>
                           <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
-                            {Object.entries(product.sizes || {}).map(([sz, cnt]) => {
+                            {Object.entries(sortProductSizes(product.sizes || {})).map(([sz, cnt]) => {
                               const countNum = Number(cnt) || 0;
                               const isOut = countNum === 0;
 

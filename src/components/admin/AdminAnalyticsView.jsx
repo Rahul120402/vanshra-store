@@ -63,7 +63,7 @@ export const AdminAnalyticsView = ({ onQuickStock, onSelectOrder }) => {
     // Total units sold
     let totalUnitsSold = 0;
     const categorySales = {};
-    const sizeDemand = { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
+    const sizeDemand = { XXS: 0, XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0 };
     const productSalesMap = {};
     const cityDemand = {};
 
@@ -390,8 +390,8 @@ export const AdminAnalyticsView = ({ onQuickStock, onSelectOrder }) => {
             </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px", textAlign: "center" }}>
-            {["S", "M", "L", "XL", "XXL"].map((sz) => {
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))", gap: "10px", textAlign: "center" }}>
+            {["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"].map((sz) => {
               const count = analytics.sizeDemand[sz] || 0;
               const share = Math.round((count / totalSizeUnits) * 100);
               const isPopular = share >= 25;

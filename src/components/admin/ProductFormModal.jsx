@@ -33,11 +33,14 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
     images: [""],
     colors: [{ name: "Standard", hex: "#111827" }],
     sizes: {
+      XXS: 0,
+      XS: 0,
       S: 5,
       M: 5,
       L: 5,
       XL: 5,
-      XXL: 0
+      XXL: 0,
+      XXXL: 0
     },
     isNew: true,
     isBestSeller: false
@@ -48,6 +51,11 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
 
   useEffect(() => {
     if (product) {
+      const productSizes = {};
+      STANDARD_SIZES.forEach((s) => {
+        productSizes[s] = product.sizes?.[s] ?? 0;
+      });
+
       setFormData({
         name: product.name || "",
         category: product.category || "Dresses",
@@ -58,17 +66,16 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
         fabricCare: product.fabricCare || "",
         images: product.images?.length ? product.images : [""],
         colors: product.colors?.length ? product.colors : [{ name: "Standard", hex: "#111827" }],
-        sizes: {
-          S: product.sizes?.S ?? 0,
-          M: product.sizes?.M ?? 0,
-          L: product.sizes?.L ?? 0,
-          XL: product.sizes?.XL ?? 0,
-          XXL: product.sizes?.XXL ?? 0
-        },
+        sizes: productSizes,
         isNew: Boolean(product.isNew),
         isBestSeller: Boolean(product.isBestSeller)
       });
     } else {
+      const defaultSizes = {};
+      STANDARD_SIZES.forEach((s) => {
+        defaultSizes[s] = ["S", "M", "L"].includes(s) ? 5 : ["XS", "XL"].includes(s) ? 2 : 0;
+      });
+
       setFormData({
         name: "",
         category: settings.categories.find((c) => c !== "All") || "Kurtis",
@@ -79,7 +86,7 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
         fabricCare: "Premium handcrafted fabric. Gentle wash or dry clean recommended.",
         images: [""],
         colors: [{ name: "Standard", hex: "#1a1a1a" }],
-        sizes: { S: 5, M: 8, L: 5, XL: 2, XXL: 0 },
+        sizes: defaultSizes,
         isNew: true,
         isBestSeller: false
       });

@@ -6,23 +6,21 @@ import { X, Save, Layers, Sparkles } from "lucide-react";
 export const QuickStockModal = ({ product, isOpen, onClose }) => {
   const { updateProduct, showToast } = useStore();
 
-  const [sizes, setSizes] = useState({
-    S: 0,
-    M: 0,
-    L: 0,
-    XL: 0,
-    XXL: 0
+  const [sizes, setSizes] = useState(() => {
+    const initial = {};
+    STANDARD_SIZES.forEach((s) => {
+      initial[s] = 0;
+    });
+    return initial;
   });
 
   useEffect(() => {
     if (product?.sizes) {
-      setSizes({
-        S: product.sizes.S ?? 0,
-        M: product.sizes.M ?? 0,
-        L: product.sizes.L ?? 0,
-        XL: product.sizes.XL ?? 0,
-        XXL: product.sizes.XXL ?? 0
+      const updated = {};
+      STANDARD_SIZES.forEach((s) => {
+        updated[s] = product.sizes[s] ?? 0;
       });
+      setSizes(updated);
     }
   }, [product, isOpen]);
 
@@ -47,7 +45,7 @@ export const QuickStockModal = ({ product, isOpen, onClose }) => {
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "520px" }}
+        style={{ maxWidth: "560px" }}
       >
         {/* Header */}
         <div style={{
@@ -85,19 +83,19 @@ export const QuickStockModal = ({ product, isOpen, onClose }) => {
         {/* Form Body */}
         <form onSubmit={handleSave} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
           
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))", gap: "8px" }}>
             {STANDARD_SIZES.map((size) => (
               <div key={size} style={{ textAlign: "center" }}>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "6px" }}>
                   {size}
                 </label>
                 <input
                   type="number"
                   min="0"
-                  value={sizes[size]}
+                  value={sizes[size] ?? 0}
                   onChange={(e) => handleStockChange(size, e.target.value)}
                   className="input-field"
-                  style={{ textAlign: "center", fontWeight: 700, fontSize: "1.1rem", padding: "10px 4px" }}
+                  style={{ textAlign: "center", fontWeight: 700, fontSize: "1rem", padding: "8px 2px" }}
                 />
               </div>
             ))}

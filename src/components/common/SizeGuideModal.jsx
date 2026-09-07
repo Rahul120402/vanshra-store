@@ -10,12 +10,14 @@ export const SizeGuideModal = () => {
   if (!isSizeGuideOpen) return null;
 
   const sizeChart = [
+    { size: "XXS", bustIn: "30-32", bustCm: "76-81", waistIn: "24-26", waistCm: "61-66", hipIn: "33-35", hipCm: "84-89", lengthIn: "43-45", lengthCm: "109-114" },
     { size: "XS", bustIn: "32-34", bustCm: "81-86", waistIn: "26-28", waistCm: "66-71", hipIn: "35-37", hipCm: "89-94", lengthIn: "44-46", lengthCm: "112-117" },
     { size: "S", bustIn: "34-36", bustCm: "86-91", waistIn: "28-30", waistCm: "71-76", hipIn: "37-39", hipCm: "94-99", lengthIn: "45-47", lengthCm: "114-119" },
     { size: "M", bustIn: "36-38", bustCm: "91-97", waistIn: "30-32", waistCm: "76-81", hipIn: "39-41", hipCm: "99-104", lengthIn: "45-47", lengthCm: "114-119" },
     { size: "L", bustIn: "38-40", bustCm: "97-102", waistIn: "32-34", waistCm: "81-86", hipIn: "41-43", hipCm: "104-109", lengthIn: "46-48", lengthCm: "117-122" },
     { size: "XL", bustIn: "40-42", bustCm: "102-107", waistIn: "34-36", waistCm: "86-91", hipIn: "43-45", hipCm: "109-114", lengthIn: "46-48", lengthCm: "117-122" },
-    { size: "XXL", bustIn: "42-44", bustCm: "107-112", waistIn: "36-38", waistCm: "91-97", hipIn: "45-47", hipCm: "114-119", lengthIn: "47-49", lengthCm: "119-124" }
+    { size: "XXL", bustIn: "42-44", bustCm: "107-112", waistIn: "36-38", waistCm: "91-97", hipIn: "45-47", hipCm: "114-119", lengthIn: "47-49", lengthCm: "119-124" },
+    { size: "XXXL", bustIn: "44-46", bustCm: "112-117", waistIn: "38-40", waistCm: "97-102", hipIn: "47-49", hipCm: "119-124", lengthIn: "47-49", lengthCm: "119-124" }
   ];
 
   const handleWhatsAppConsult = () => {
