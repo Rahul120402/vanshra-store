@@ -256,31 +256,6 @@ export const ProductDetailPage = () => {
               {/* Floating Action Buttons */}
               <div style={{ position: "absolute", top: "12px", right: "12px", display: "flex", flexDirection: "column", gap: "8px", zIndex: 3 }}>
                 <button
-                  onClick={() => toggleWishlist(product.id)}
-                  style={{
-                    background: "rgba(255, 255, 255, 0.94)",
-                    backdropFilter: "blur(10px)",
-                    WebkitBackdropFilter: "blur(10px)",
-                    border: "1.5px solid var(--border-gold-bright)",
-                    borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: isWishlisted ? "var(--accent-ruby)" : "var(--text-primary)",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-                    transition: "transform var(--transition-fast)"
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.12)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  title={isWishlisted ? "Remove from Wishlist" : "Save to Wishlist"}
-                >
-                  <Heart size={18} fill={isWishlisted ? "var(--accent-ruby)" : "none"} />
-                </button>
-
-                <button
                   onClick={handleShare}
                   style={{
                     background: "rgba(255, 255, 255, 0.94)",
