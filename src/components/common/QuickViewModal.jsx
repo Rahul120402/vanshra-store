@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { formatCurrency, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
-import { X, ShoppingBag, Heart, ChevronRight, Ruler } from "lucide-react";
+import { X, ShoppingBag, ChevronRight, Ruler } from "lucide-react";
 
 export const QuickViewModal = () => {
   const {
@@ -10,8 +10,6 @@ export const QuickViewModal = () => {
     quickViewProduct,
     settings,
     addToCart,
-    wishlist,
-    toggleWishlist,
     navigateToProduct,
     setIsSizeGuideOpen
   } = useStore();
@@ -38,7 +36,6 @@ export const QuickViewModal = () => {
   if (!isQuickViewOpen || !quickViewProduct) return null;
 
   const stockBadge = getStockBadgeInfo(quickViewProduct.sizes);
-  const isWishlisted = wishlist.includes(quickViewProduct.id);
   const selectedSizeStock = selectedSize ? (quickViewProduct.sizes?.[selectedSize] || 0) : 0;
   const isSelectedSizeOutOfStock = selectedSize && selectedSizeStock === 0;
 
@@ -116,29 +113,6 @@ export const QuickViewModal = () => {
                 }}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
-              
-              {/* Wishlist floating button */}
-              <button
-                onClick={() => toggleWishlist(quickViewProduct.id)}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  left: "10px",
-                  background: "rgba(255, 255, 255, 0.92)",
-                  backdropFilter: "blur(6px)",
-                  border: "1px solid var(--border-gold)",
-                  borderRadius: "50%",
-                  width: "34px",
-                  height: "34px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: isWishlisted ? "var(--accent-ruby)" : "var(--text-primary)"
-                }}
-              >
-                <Heart size={16} fill={isWishlisted ? "var(--accent-ruby)" : "none"} />
-              </button>
             </div>
 
             {/* Thumbnail selector */}

@@ -6,7 +6,6 @@ import { ProductCard } from "./ProductCard";
 import { 
   ArrowLeft, 
   ShoppingBag, 
-  Heart, 
   Ruler, 
   Truck, 
   ShieldCheck, 
@@ -30,8 +29,6 @@ export const ProductDetailPage = () => {
     navigateToCategory,
     settings,
     addToCart,
-    wishlist,
-    toggleWishlist,
     setIsSizeGuideOpen,
     setIsCheckoutOpen,
     showToast
@@ -85,7 +82,6 @@ export const ProductDetailPage = () => {
   if (!product) return null;
 
   const stockBadge = getStockBadgeInfo(product.sizes);
-  const isWishlisted = wishlist.includes(product.id);
   const selectedSizeStock = selectedSize ? (product.sizes?.[selectedSize] || 0) : 0;
   const isSelectedSizeOutOfStock = selectedSize && selectedSizeStock === 0;
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { formatCurrency, getTotalStock, getStockBadgeInfo, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
-import { Heart, Eye, Check, ShoppingBag } from "lucide-react";
+import { Eye, Check, ShoppingBag } from "lucide-react";
 
 export const ProductCard = ({ product }) => {
   const {
@@ -10,14 +10,13 @@ export const ProductCard = ({ product }) => {
     setIsQuickViewOpen,
     setQuickViewProduct,
     addToCart,
-    wishlist,
-    toggleWishlist
+    showToast
   } = useStore();
 
   const [isHovered, setIsHovered] = useState(false);
   const [justAddedSize, setJustAddedSize] = useState(null);
+  const [isCardBagAdded, setIsCardBagAdded] = useState(false);
 
-  const isWishlisted = wishlist.includes(product.id);
   const totalStock = getTotalStock(product.sizes);
   const stockBadge = getStockBadgeInfo(product.sizes);
   const discountPercent = product.originalPrice > product.price 
@@ -43,6 +42,23 @@ export const ProductCard = ({ product }) => {
     setTimeout(() => setJustAddedSize(null), 1200);
 
     addToCart(product, size, product.colors?.[0], 1);
+  };
+
+  const handleQuickAddDirect = (e) => {
+    e.stopPropagation();
+    const inStockSize = Object.keys(product.sizes || {}).find(
+      (s) => (Number(product.sizes[s]) || 0) > 0
+    );
+
+    if (!inStockSize) {
+      showToast(`${product.name} is currently out of stock`, "warning");
+      return;
+    }
+
+    setIsCardBagAdded(true);
+    setTimeout(() => setIsCardBagAdded(false), 1400);
+
+    addToCart(product, inStockSize, product.colors?.[0], 1);
   };
 
   const hasSecondaryImage = product.images && product.images.length > 1;
@@ -174,44 +190,51 @@ export const ProductCard = ({ product }) => {
           )}
         </div>
 
-        {/* Wishlist Button with Heart Pop Animation */}
+        {/* Quick Add to Cart Button */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleWishlist(product.id);
-          }}
+          onClick={handleQuickAddDirect}
           style={{
             position: "absolute",
             top: "8px",
             right: "8px",
-            background: "rgba(255, 255, 255, 0.92)",
+            background: isCardBagAdded ? "var(--accent-emerald)" : "rgba(255, 255, 255, 0.95)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
-            border: "1px solid var(--border-gold-bright)",
+            border: isCardBagAdded ? "1px solid var(--accent-emerald)" : "1.5px solid var(--border-gold-bright)",
             borderRadius: "50%",
-            width: "clamp(30px, 6vw, 36px)",
-            height: "clamp(30px, 6vw, 36px)",
+            width: "clamp(32px, 6.5vw, 38px)",
+            height: "clamp(32px, 6.5vw, 38px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: isWishlisted ? "var(--accent-ruby)" : "var(--text-primary)",
+            color: isCardBagAdded ? "#ffffff" : "var(--accent-gold-dark)",
             zIndex: 3,
-            transition: "transform var(--transition-fast), background var(--transition-fast)",
-            boxShadow: "0 3px 12px rgba(0,0,0,0.16)"
+            transition: "all var(--transition-fast)",
+            boxShadow: "0 4px 14px rgba(44, 30, 10, 0.16)"
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.14)")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          title={isWishlisted ? "Remove from Wishlist" : "Save to Wishlist"}
+          onMouseEnter={(e) => {
+            if (!isCardBagAdded) {
+              e.currentTarget.style.transform = "scale(1.12)";
+              e.currentTarget.style.background = "linear-gradient(135deg, #181512 0%, #2a241e 100%)";
+              e.currentTarget.style.color = "var(--accent-gold-light)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isCardBagAdded) {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.95)";
+              e.currentTarget.style.color = "var(--accent-gold-dark)";
+            }
+          }}
+          title="Add to Shopping Bag"
+          aria-label="Add to Shopping Bag"
         >
-          <Heart 
-            size={15} 
-            fill={isWishlisted ? "var(--accent-ruby)" : "none"} 
-            style={{
-              transition: "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-              transform: isWishlisted ? "scale(1.15)" : "scale(1)"
-            }}
-          />
+          {isCardBagAdded ? (
+            <Check size={16} strokeWidth={2.6} />
+          ) : (
+            <ShoppingBag size={16} strokeWidth={2.2} />
+          )}
         </button>
 
         {/* Quick View Button Hover Overlay (Desktop) */}
