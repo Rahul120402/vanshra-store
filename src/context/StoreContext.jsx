@@ -824,25 +824,32 @@ export const StoreProvider = ({ children }) => {
       fields.images = cleaned.length > 0 ? cleaned : [FALLBACK_PRODUCT_IMAGE];
     }
 
-    setProducts((prev) => {
-      const next = prev.map((prod) => (prod.id === productId ? { ...prod, ...fields } : prod));
-      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
-      const updated = next.find((p) => p.id === productId);
-      if (updated && isFirebaseConfigured()) {
-        saveProductToCloud(updated);
+    let updatedProdObj = null;
+    const next = products.map((prod) => {
+      if (prod.id === productId) {
+        updatedProdObj = { ...prod, ...fields };
+        return updatedProdObj;
       }
-      return next;
+      return prod;
     });
+
+    setProducts(next);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+
+    if (updatedProdObj && isFirebaseConfigured()) {
+      saveProductToCloud(updatedProdObj).catch((err) =>
+        console.warn(`[VANSHRA Cloud] updateProduct failed for ${productId}:`, err)
+      );
+    }
     showToast("Product updated successfully!", "success");
   };
 
   const deleteProduct = (productId) => {
     addDeletedProductId(productId);
-    setProducts((prev) => {
-      const next = prev.filter((prod) => prod.id !== productId);
-      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
-      return next;
-    });
+    const next = products.filter((prod) => prod.id !== productId);
+    setProducts(next);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+
     if (isFirebaseConfigured()) {
       deleteProductFromCloud(productId);
     }
@@ -852,27 +859,31 @@ export const StoreProvider = ({ children }) => {
   const updateSizeStock = (productId, sizeKey, newCount) => {
     const count = Math.max(0, parseInt(newCount, 10) || 0);
     const nowIso = new Date().toISOString();
-    setProducts((prev) => {
-      const next = prev.map((prod) => {
-        if (prod.id === productId) {
-          return {
-            ...prod,
-            sizes: {
-              ...prod.sizes,
-              [sizeKey]: count
-            },
-            updatedAt: nowIso
-          };
-        }
-        return prod;
-      });
-      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
-      const updated = next.find((p) => p.id === productId);
-      if (updated && isFirebaseConfigured()) {
-        saveProductToCloud(updated);
+    let updatedProdObj = null;
+
+    const next = products.map((prod) => {
+      if (prod.id === productId) {
+        updatedProdObj = {
+          ...prod,
+          sizes: {
+            ...prod.sizes,
+            [sizeKey]: count
+          },
+          updatedAt: nowIso
+        };
+        return updatedProdObj;
       }
-      return next;
+      return prod;
     });
+
+    setProducts(next);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+
+    if (updatedProdObj && isFirebaseConfigured()) {
+      saveProductToCloud(updatedProdObj).catch((err) =>
+        console.warn(`[VANSHRA Cloud] updateSizeStock failed for ${productId}:`, err)
+      );
+    }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
   };
 
@@ -1179,31 +1190,29 @@ export const StoreProvider = ({ children }) => {
     const nowIso = new Date().toISOString();
     const updatedProductsToSync = [];
 
-    setProducts((prevProducts) => {
-      const nextProducts = prevProducts.map((prod) => {
-        // Find ALL items in cart that correspond to this product (supports multiple sizes of the same product)
-        const matchingCartItems = cart.filter((item) => item.productId === prod.id);
-        if (matchingCartItems.length === 0) return prod;
+    const nextProducts = products.map((prod) => {
+      // Find ALL items in cart that correspond to this product (supports multiple sizes of the same product)
+      const matchingCartItems = cart.filter((item) => item.productId === prod.id);
+      if (matchingCartItems.length === 0) return prod;
 
-        const updatedSizes = { ...(prod.sizes || {}) };
-        matchingCartItems.forEach((cartItem) => {
-          const currentStock = Number(updatedSizes[cartItem.size]) || 0;
-          const qty = Number(cartItem.quantity) || 1;
-          updatedSizes[cartItem.size] = Math.max(0, currentStock - qty);
-        });
-
-        const updatedProd = {
-          ...prod,
-          sizes: updatedSizes,
-          updatedAt: nowIso
-        };
-        updatedProductsToSync.push(updatedProd);
-        return updatedProd;
+      const updatedSizes = { ...(prod.sizes || {}) };
+      matchingCartItems.forEach((cartItem) => {
+        const currentStock = Number(updatedSizes[cartItem.size]) || 0;
+        const qty = Number(cartItem.quantity) || 1;
+        updatedSizes[cartItem.size] = Math.max(0, currentStock - qty);
       });
 
-      safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
-      return nextProducts;
+      const updatedProd = {
+        ...prod,
+        sizes: updatedSizes,
+        updatedAt: nowIso
+      };
+      updatedProductsToSync.push(updatedProd);
+      return updatedProd;
     });
+
+    setProducts(nextProducts);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
 
     // Immediately persist decremented product inventory to Cloud Database (Firestore)
     if (isFirebaseConfigured() && updatedProductsToSync.length > 0) {
