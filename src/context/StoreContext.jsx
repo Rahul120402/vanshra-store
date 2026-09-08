@@ -723,32 +723,9 @@ export const StoreProvider = ({ children }) => {
           const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
 
           setProducts((prev) => {
-            const prevMap = new Map(prev.map((p) => [p.id, p]));
-            const resolvedProducts = filteredCloud.map((cloudProd) => {
-              const localProd = prevMap.get(cloudProd.id);
-              if (!localProd) return cloudProd;
-
-              const localTime = new Date(localProd.updatedAt || localProd.createdAt || 0).getTime();
-              const cloudTime = new Date(cloudProd.updatedAt || cloudProd.createdAt || 0).getTime();
-
-              // If local state was updated more recently or equal, keep local version
-              if (localTime > cloudTime) {
-                return localProd;
-              }
-              return cloudProd;
-            });
-
-            // Keep local-only products that haven't synced to cloud yet
-            const cloudIdSet = new Set(filteredCloud.map((p) => p.id));
-            prev.forEach((localProd) => {
-              if (!cloudIdSet.has(localProd.id) && !deletedIds.includes(localProd.id)) {
-                resolvedProducts.push(localProd);
-              }
-            });
-
-            if (JSON.stringify(prev) === JSON.stringify(resolvedProducts)) return prev;
-            safeSetStorage(STORAGE_KEYS.PRODUCTS, resolvedProducts);
-            return resolvedProducts;
+            if (JSON.stringify(prev) === JSON.stringify(filteredCloud)) return prev;
+            safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
+            return filteredCloud;
           });
         }
 
@@ -756,46 +733,20 @@ export const StoreProvider = ({ children }) => {
           const normalizedCloud = cloudOrders
             .filter((o) => o && o.id && !DEMO_ORDER_IDS.has(o.id))
             .map(normalizeOrder)
-            .filter(Boolean);
+            .filter(Boolean)
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
           setOrders((prev) => {
-            const prevMap = new Map(prev.map((o) => [o.id, o]));
-            const resolvedOrders = normalizedCloud.map((cloudOrd) => {
-              const localOrd = prevMap.get(cloudOrd.id);
-              if (!localOrd) return cloudOrd;
-
-              const localTime = new Date(localOrd.updatedAt || localOrd.createdAt || 0).getTime();
-              const cloudTime = new Date(cloudOrd.updatedAt || cloudOrd.createdAt || 0).getTime();
-
-              // If local state was updated more recently or equal, keep local version
-              if (localTime > cloudTime) {
-                return localOrd;
-              }
-              return cloudOrd;
-            });
-
-            // Keep local-only orders that haven't synced to cloud yet
-            const cloudIdSet = new Set(normalizedCloud.map((o) => o.id));
-            prev.forEach((localOrd) => {
-              if (!cloudIdSet.has(localOrd.id) && !DEMO_ORDER_IDS.has(localOrd.id)) {
-                resolvedOrders.push(localOrd);
-              }
-            });
-
-            const sorted = resolvedOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-            if (JSON.stringify(prev) === JSON.stringify(sorted)) return prev;
-            safeSetStorage(STORAGE_KEYS.ORDERS, sorted);
-            return sorted;
+            if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
+            safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
+            return normalizedCloud;
           });
 
           setSelectedOrderForDetail((curr) => {
             if (!curr) return null;
             const match = normalizedCloud.find((o) => o.id === curr.id);
-            if (!match) return curr;
-            const currTime = new Date(curr.updatedAt || curr.createdAt || 0).getTime();
-            const matchTime = new Date(match.updatedAt || match.createdAt || 0).getTime();
-            return currTime > matchTime ? curr : match;
+            if (!match) return null;
+            return match;
           });
         }
 
