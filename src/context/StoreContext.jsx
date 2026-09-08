@@ -719,10 +719,36 @@ export const StoreProvider = ({ children }) => {
         if (!isMounted) return;
 
         if (cloudProducts && Array.isArray(cloudProducts)) {
+          const deletedIds = getDeletedProductIds();
+          const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
+
           setProducts((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(cloudProducts)) return prev;
-            safeSetStorage(STORAGE_KEYS.PRODUCTS, cloudProducts);
-            return cloudProducts;
+            const prevMap = new Map(prev.map((p) => [p.id, p]));
+            const resolvedProducts = filteredCloud.map((cloudProd) => {
+              const localProd = prevMap.get(cloudProd.id);
+              if (!localProd) return cloudProd;
+
+              const localTime = new Date(localProd.updatedAt || localProd.createdAt || 0).getTime();
+              const cloudTime = new Date(cloudProd.updatedAt || cloudProd.createdAt || 0).getTime();
+
+              // If local state was updated more recently or equal, keep local version
+              if (localTime > cloudTime) {
+                return localProd;
+              }
+              return cloudProd;
+            });
+
+            // Keep local-only products that haven't synced to cloud yet
+            const cloudIdSet = new Set(filteredCloud.map((p) => p.id));
+            prev.forEach((localProd) => {
+              if (!cloudIdSet.has(localProd.id) && !deletedIds.includes(localProd.id)) {
+                resolvedProducts.push(localProd);
+              }
+            });
+
+            if (JSON.stringify(prev) === JSON.stringify(resolvedProducts)) return prev;
+            safeSetStorage(STORAGE_KEYS.PRODUCTS, resolvedProducts);
+            return resolvedProducts;
           });
         }
 
@@ -812,6 +838,7 @@ export const StoreProvider = ({ children }) => {
   // ==================== PRODUCT ACTIONS ====================
 
   const addProduct = (productData) => {
+    const nowIso = new Date().toISOString();
     const cleanedImages = Array.isArray(productData.images)
       ? productData.images.map(normalizeImageUrl).filter(Boolean)
       : [];
@@ -820,7 +847,8 @@ export const StoreProvider = ({ children }) => {
       ...productData,
       id: `prod-${Date.now()}`,
       images: cleanedImages.length > 0 ? cleanedImages : [FALLBACK_PRODUCT_IMAGE],
-      createdAt: new Date().toISOString()
+      createdAt: nowIso,
+      updatedAt: nowIso
     };
 
     removeDeletedProductId(newProduct.id);
@@ -838,7 +866,8 @@ export const StoreProvider = ({ children }) => {
   };
 
   const updateProduct = (productId, updatedFields) => {
-    let fields = { ...updatedFields };
+    const nowIso = new Date().toISOString();
+    let fields = { ...updatedFields, updatedAt: nowIso };
     if (Array.isArray(fields.images)) {
       const cleaned = fields.images.map(normalizeImageUrl).filter(Boolean);
       fields.images = cleaned.length > 0 ? cleaned : [FALLBACK_PRODUCT_IMAGE];
@@ -871,6 +900,7 @@ export const StoreProvider = ({ children }) => {
 
   const updateSizeStock = (productId, sizeKey, newCount) => {
     const count = Math.max(0, parseInt(newCount, 10) || 0);
+    const nowIso = new Date().toISOString();
     setProducts((prev) => {
       const next = prev.map((prod) => {
         if (prod.id === productId) {
@@ -879,11 +909,13 @@ export const StoreProvider = ({ children }) => {
             sizes: {
               ...prod.sizes,
               [sizeKey]: count
-            }
+            },
+            updatedAt: nowIso
           };
         }
         return prod;
       });
+      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
       const updated = next.find((p) => p.id === productId);
       if (updated && isFirebaseConfigured()) {
         saveProductToCloud(updated);
@@ -1192,24 +1224,46 @@ export const StoreProvider = ({ children }) => {
       }
     };
 
-    // 1. Decrement stock for ordered sizes
-    setProducts((prevProducts) =>
-      prevProducts.map((prod) => {
-        const orderItem = cart.find((item) => item.productId === prod.id);
-        if (orderItem) {
-          const currentSizeStock = prod.sizes?.[orderItem.size] ?? 0;
-          const newSizeStock = Math.max(0, currentSizeStock - orderItem.quantity);
-          return {
-            ...prod,
-            sizes: {
-              ...prod.sizes,
-              [orderItem.size]: newSizeStock
-            }
-          };
+    // 1. Decrement stock for ordered sizes across all items in cart
+    const nowIso = new Date().toISOString();
+    let updatedProductsList = [];
+
+    setProducts((prevProducts) => {
+      const nextProducts = prevProducts.map((prod) => {
+        // Find ALL items in cart that correspond to this product (supports multiple sizes of the same product)
+        const matchingCartItems = cart.filter((item) => item.productId === prod.id);
+        if (matchingCartItems.length === 0) return prod;
+
+        const updatedSizes = { ...(prod.sizes || {}) };
+        matchingCartItems.forEach((cartItem) => {
+          const currentStock = Number(updatedSizes[cartItem.size]) || 0;
+          const qty = Number(cartItem.quantity) || 1;
+          updatedSizes[cartItem.size] = Math.max(0, currentStock - qty);
+        });
+
+        return {
+          ...prod,
+          sizes: updatedSizes,
+          updatedAt: nowIso
+        };
+      });
+
+      updatedProductsList = nextProducts;
+      safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
+      return nextProducts;
+    });
+
+    // Immediately persist decremented product inventory to Cloud Database (Firestore)
+    if (isFirebaseConfigured() && updatedProductsList.length > 0) {
+      const affectedProductIds = new Set(cart.map((item) => item.productId));
+      updatedProductsList.forEach((prod) => {
+        if (affectedProductIds.has(prod.id)) {
+          saveProductToCloud(prod).catch((err) =>
+            console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
+          );
         }
-        return prod;
-      })
-    );
+      });
+    }
 
     // 2. Save order
     const updatedOrder = normalizeOrder(newOrder);

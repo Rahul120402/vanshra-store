@@ -117,10 +117,14 @@ export const saveProductToCloud = async (product) => {
 
   try {
     const docId = String(product.id);
+    const prodWithUpdated = {
+      ...product,
+      updatedAt: product.updatedAt || new Date().toISOString()
+    };
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/products/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
     
     const body = JSON.stringify({
-      fields: toFirestoreFields(product)
+      fields: toFirestoreFields(prodWithUpdated)
     });
 
     const res = await fetch(url, {

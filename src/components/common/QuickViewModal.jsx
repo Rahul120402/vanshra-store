@@ -8,11 +8,14 @@ export const QuickViewModal = () => {
     isQuickViewOpen,
     setIsQuickViewOpen,
     quickViewProduct,
+    products,
     settings,
     addToCart,
     navigateToProduct,
     setIsSizeGuideOpen
   } = useStore();
+
+  const product = products.find((p) => p.id === quickViewProduct?.id) || quickViewProduct;
 
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [selectedColor, setSelectedColor] = useState(null);
@@ -20,35 +23,35 @@ export const QuickViewModal = () => {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    if (quickViewProduct) {
+    if (product) {
       setSelectedImageIdx(0);
-      setSelectedColor(quickViewProduct.colors?.[0] || null);
+      setSelectedColor(product.colors?.[0] || null);
       
       // Auto-select first available in-stock size in standard order
-      const sortedSizes = sortProductSizes(quickViewProduct.sizes || {});
+      const sortedSizes = sortProductSizes(product.sizes || {});
       const availableSize = Object.keys(sortedSizes).find(
         (size) => (sortedSizes[size] || 0) > 0
       );
       setSelectedSize(availableSize || "");
       setQuantity(1);
     }
-  }, [quickViewProduct]);
+  }, [product?.id]);
 
-  if (!isQuickViewOpen || !quickViewProduct) return null;
+  if (!isQuickViewOpen || !product) return null;
 
-  const stockBadge = getStockBadgeInfo(quickViewProduct.sizes);
-  const selectedSizeStock = selectedSize ? (quickViewProduct.sizes?.[selectedSize] || 0) : 0;
+  const stockBadge = getStockBadgeInfo(product.sizes);
+  const selectedSizeStock = selectedSize ? (product.sizes?.[selectedSize] || 0) : 0;
   const isSelectedSizeOutOfStock = selectedSize && selectedSizeStock === 0;
 
   const handleAddToCart = () => {
     if (!selectedSize) return;
-    addToCart(quickViewProduct, selectedSize, selectedColor, quantity);
+    addToCart(product, selectedSize, selectedColor, quantity);
     setIsQuickViewOpen(false);
   };
 
   const handleViewFullPage = () => {
     setIsQuickViewOpen(false);
-    navigateToProduct(quickViewProduct.id);
+    navigateToProduct(product.id);
   };
 
   return (
@@ -104,8 +107,8 @@ export const QuickViewModal = () => {
               position: "relative"
             }}>
               <img
-                src={quickViewProduct.images?.[selectedImageIdx] || quickViewProduct.images?.[0] || FALLBACK_PRODUCT_IMAGE}
-                alt={quickViewProduct.name}
+                src={product.images?.[selectedImageIdx] || product.images?.[0] || FALLBACK_PRODUCT_IMAGE}
+                alt={product.name}
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
@@ -117,9 +120,9 @@ export const QuickViewModal = () => {
             </div>
 
             {/* Thumbnail selector */}
-            {quickViewProduct.images?.length > 1 && (
+            {product.images?.length > 1 && (
               <div style={{ display: "flex", gap: "8px", overflowX: "auto" }}>
-                {quickViewProduct.images.map((imgUrl, idx) => (
+                {product.images.map((imgUrl, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImageIdx(idx)}
@@ -158,7 +161,7 @@ export const QuickViewModal = () => {
             {/* Category & Stock Badge */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
               <span style={{ fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent-gold-dark)", fontWeight: 800 }}>
-                {quickViewProduct.category}
+                {product.category}
               </span>
               <span className={`badge badge-${stockBadge.status === "in-stock" ? "delivered" : stockBadge.status === "low-stock" ? "dispatched" : "cancelled"}`}>
                 {stockBadge.label}
@@ -167,34 +170,34 @@ export const QuickViewModal = () => {
 
             {/* Title */}
             <h2 className="font-serif" style={{ fontSize: "clamp(1.15rem, 3vw, 1.45rem)", lineHeight: 1.3, color: "var(--text-primary)" }}>
-              {quickViewProduct.name}
+              {product.name}
             </h2>
 
             {/* Price */}
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
               <span className="font-serif" style={{ fontSize: "clamp(1.3rem, 3.5vw, 1.55rem)", fontWeight: 700, color: "var(--accent-gold-dark)" }}>
-                {formatCurrency(quickViewProduct.price, settings.currencySymbol)}
+                {formatCurrency(product.price, settings.currencySymbol)}
               </span>
-              {quickViewProduct.originalPrice > quickViewProduct.price && (
+              {product.originalPrice > product.price && (
                 <>
                   <span style={{ fontSize: "0.92rem", color: "var(--text-muted)", textDecoration: "line-through" }}>
-                    {formatCurrency(quickViewProduct.originalPrice, settings.currencySymbol)}
+                    {formatCurrency(product.originalPrice, settings.currencySymbol)}
                   </span>
                   <span style={{ fontSize: "0.75rem", color: "var(--accent-emerald)", fontWeight: 700 }}>
-                    Save {Math.round(((quickViewProduct.originalPrice - quickViewProduct.price) / quickViewProduct.originalPrice) * 100)}%
+                    Save {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
                   </span>
                 </>
               )}
             </div>
 
             {/* Color variants */}
-            {quickViewProduct.colors?.length > 0 && (
+            {product.colors?.length > 0 && (
               <div>
                 <div style={{ fontSize: "0.80rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" }}>
                   Color: <span style={{ color: "var(--text-primary)" }}>{selectedColor?.name || "Standard"}</span>
                 </div>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  {quickViewProduct.colors.map((color) => (
+                  {product.colors.map((color) => (
                     <button
                       key={color.name}
                       onClick={() => setSelectedColor(color)}
@@ -241,7 +244,7 @@ export const QuickViewModal = () => {
               </div>
 
               <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {Object.entries(sortProductSizes(quickViewProduct.sizes || {})).map(([size, count]) => {
+                {Object.entries(sortProductSizes(product.sizes || {})).map(([size, count]) => {
                   const stockNum = Number(count) || 0;
                   const isOutOfStock = stockNum === 0;
                   const isSelected = selectedSize === size;
