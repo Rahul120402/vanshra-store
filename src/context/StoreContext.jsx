@@ -1224,9 +1224,9 @@ export const StoreProvider = ({ children }) => {
       }
     };
 
-    // 1. Decrement stock for ordered sizes across all items in cart
+    // 1. Decrement stock for ordered sizes across all items in cart synchronously
     const nowIso = new Date().toISOString();
-    let updatedProductsList = [];
+    const updatedProductsToSync = [];
 
     setProducts((prevProducts) => {
       const nextProducts = prevProducts.map((prod) => {
@@ -1241,27 +1241,25 @@ export const StoreProvider = ({ children }) => {
           updatedSizes[cartItem.size] = Math.max(0, currentStock - qty);
         });
 
-        return {
+        const updatedProd = {
           ...prod,
           sizes: updatedSizes,
           updatedAt: nowIso
         };
+        updatedProductsToSync.push(updatedProd);
+        return updatedProd;
       });
 
-      updatedProductsList = nextProducts;
       safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
       return nextProducts;
     });
 
     // Immediately persist decremented product inventory to Cloud Database (Firestore)
-    if (isFirebaseConfigured() && updatedProductsList.length > 0) {
-      const affectedProductIds = new Set(cart.map((item) => item.productId));
-      updatedProductsList.forEach((prod) => {
-        if (affectedProductIds.has(prod.id)) {
-          saveProductToCloud(prod).catch((err) =>
-            console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
-          );
-        }
+    if (isFirebaseConfigured() && updatedProductsToSync.length > 0) {
+      updatedProductsToSync.forEach((prod) => {
+        saveProductToCloud(prod).catch((err) =>
+          console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
+        );
       });
     }
 
