@@ -8,12 +8,12 @@ export const handler = async (event) => {
     };
   }
 
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || "0Vpjg7yJ46lZXRrJVSFAZEA0";
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!key_secret) {
     return {
       statusCode: 401,
-      body: JSON.stringify({ error: "Razorpay Key Secret not configured" })
+      body: JSON.stringify({ error: "Razorpay Key Secret not configured in environment variables" })
     };
   }
 

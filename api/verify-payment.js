@@ -7,11 +7,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || "0Vpjg7yJ46lZXRrJVSFAZEA0";
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!key_secret) {
     return res.status(401).json({
-      error: "Razorpay Key Secret not configured on the server."
+      error: "Razorpay Key Secret not configured on the server. Please set RAZORPAY_KEY_SECRET in environment variables."
     });
   }
 

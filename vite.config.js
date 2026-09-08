@@ -24,8 +24,14 @@ const razorpayApiPlugin = () => ({
           }
 
           const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
-          const key_id = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TYnxFeonLIDmVJ';
-          const key_secret = env.RAZORPAY_KEY_SECRET || '0Vpjg7yJ46lZXRrJVSFAZEA0';
+          const key_id = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
+          const key_secret = env.RAZORPAY_KEY_SECRET;
+
+          if (!key_id || !key_secret) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'Razorpay credentials not found in local .env file. Please check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' }));
+            return;
+          }
 
           res.setHeader('Content-Type', 'application/json');
 

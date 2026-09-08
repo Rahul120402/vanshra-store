@@ -60,6 +60,19 @@ function formatPhoneDisplay(phone) {
 }
 
 /**
+ * Sanitize and escape HTML entities to prevent HTML injection / XSS in emails
+ */
+function escapeHtml(text) {
+  if (text === undefined || text === null) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * Helper to get the correct active sheet directly from your spreadsheet
  */
 function getTargetSheet() {
@@ -316,14 +329,14 @@ function initializeHeadersIfNeeded(sheet) {
 function sendOwnerAlertEmail(params) {
   var customerRawPhone = params.customer.phone || "";
   var wpPhone = cleanWhatsAppPhone(customerRawPhone);
-  var displayPhone = formatPhoneDisplay(customerRawPhone);
+  var displayPhone = escapeHtml(formatPhoneDisplay(customerRawPhone));
 
   var itemsTableRows = params.items.map(function(item) {
     return '<tr style="border-bottom: 1px solid #e5e7eb;">' +
-      '<td style="padding: 10px 12px; font-weight: 600; color: #111827;">' + item.name + '</td>' +
-      '<td style="padding: 10px 12px; text-align: center;"><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #111827;">' + (item.size || "Free") + '</span></td>' +
-      '<td style="padding: 10px 12px; text-align: center; font-weight: 700;">' + (item.quantity || 1) + '</td>' +
-      '<td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #b45309;">' + params.currency + (item.price * (item.quantity || 1)) + '</td>' +
+      '<td style="padding: 10px 12px; font-weight: 600; color: #111827;">' + escapeHtml(item.name) + '</td>' +
+      '<td style="padding: 10px 12px; text-align: center;"><span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #111827;">' + escapeHtml(item.size || "Free") + '</span></td>' +
+      '<td style="padding: 10px 12px; text-align: center; font-weight: 700;">' + Number(item.quantity || 1) + '</td>' +
+      '<td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #b45309;">' + escapeHtml(params.currency) + (Number(item.price || 0) * Number(item.quantity || 1)) + '</td>' +
     '</tr>';
   }).join("");
 
@@ -335,7 +348,7 @@ function sendOwnerAlertEmail(params) {
       
       '<!-- Header -->' +
       '<div style="background: linear-gradient(180deg, #181512 0%, #0d0b09 100%); padding: 26px 24px; text-align: center; border-bottom: 2px solid #d4af37;">' +
-        '<h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase;">' + params.brandName + '</h1>' +
+        '<h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase;">' + escapeHtml(params.brandName) + '</h1>' +
         '<div style="display: inline-block; background: #d4af37; color: #181512; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 10px;">' +
           '🚨 New Customer Order Received' +
         '</div>' +
@@ -344,19 +357,19 @@ function sendOwnerAlertEmail(params) {
       '<!-- Body Content -->' +
       '<div style="padding: 24px;">' +
         '<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">' +
-          '<div><span style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Order ID</span><div style="font-size: 18px; font-weight: 800; color: #b45309;">#' + params.orderId + '</div></div>' +
-          '<div style="text-align: right;"><span style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Total Payable</span><div style="font-size: 20px; font-weight: 800; color: #111827;">' + params.currency + params.total + '</div></div>' +
+          '<div><span style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Order ID</span><div style="font-size: 18px; font-weight: 800; color: #b45309;">#' + escapeHtml(params.orderId) + '</div></div>' +
+          '<div style="text-align: right;"><span style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700;">Total Payable</span><div style="font-size: 20px; font-weight: 800; color: #111827;">' + escapeHtml(params.currency) + Number(params.total || 0) + '</div></div>' +
         '</div>' +
 
         '<!-- Payment Status Badge -->' +
         (params.isPaid ? 
           '<div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; color: #065f46;">' +
             '<strong>✅ PAYMENT STATUS: PAID & VERIFIED ONLINE</strong><br/>' +
-            '<span style="font-size: 12px; color: #047857;">Mode: Prepaid (Razorpay)' + (params.razorpayPaymentId ? ' • Payment ID: <code style="background: #ffffff; padding: 2px 6px; border-radius: 4px; border: 1px solid #10b981;">' + params.razorpayPaymentId + '</code>' : '') + '</span>' +
+            '<span style="font-size: 12px; color: #047857;">Mode: Prepaid (Razorpay)' + (params.razorpayPaymentId ? ' • Payment ID: <code style="background: #ffffff; padding: 2px 6px; border-radius: 4px; border: 1px solid #10b981;">' + escapeHtml(params.razorpayPaymentId) + '</code>' : '') + '</span>' +
           '</div>' : 
           '<div style="background: #fef3c7; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13.5px; color: #92400e;">' +
             '<strong>⏳ PAYMENT STATUS: PENDING (MANUAL UPI)</strong><br/>' +
-            '<span style="font-size: 12px;">Customer will send payment to UPI ID: ' + (params.adminUpiId || "N/A") + '</span>' +
+            '<span style="font-size: 12px;">Customer will send payment to UPI ID: ' + escapeHtml(params.adminUpiId || "N/A") + '</span>' +
           '</div>'
         ) +
 
@@ -364,11 +377,11 @@ function sendOwnerAlertEmail(params) {
         '<div style="background: #fdfbf7; border: 1px solid #e7e0d3; border-radius: 8px; padding: 16px; margin-bottom: 20px;">' +
           '<h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #92400e; margin: 0 0 10px 0; font-weight: 800;">👤 Customer Information</h3>' +
           '<div style="font-size: 14px; line-height: 1.6; color: #374151;">' +
-            '<strong>Name:</strong> ' + (params.customer.fullName || "Guest") + '<br/>' +
+            '<strong>Name:</strong> ' + escapeHtml(params.customer.fullName || "Guest") + '<br/>' +
             '<strong>Phone / WhatsApp:</strong> ' + displayPhone + '<br/>' +
-            (params.customer.email ? '<strong>Email:</strong> ' + params.customer.email + '<br/>' : '') +
-            '<strong>Shipping Address:</strong> ' + (params.customer.address || "") + ', ' + (params.customer.city || "") + ', ' + (params.customer.state || "") + ' - ' + (params.customer.pincode || "") + '<br/>' +
-            (params.notes ? '<div style="margin-top: 6px; padding: 6px 10px; background: #fef3c7; border-radius: 4px; font-size: 12px; color: #92400e;"><strong>Delivery Note:</strong> ' + params.notes + '</div>' : '') +
+            (params.customer.email ? '<strong>Email:</strong> ' + escapeHtml(params.customer.email) + '<br/>' : '') +
+            '<strong>Shipping Address:</strong> ' + escapeHtml(params.customer.address || "") + ', ' + escapeHtml(params.customer.city || "") + ', ' + escapeHtml(params.customer.state || "") + ' - ' + escapeHtml(params.customer.pincode || "") + '<br/>' +
+            (params.notes ? '<div style="margin-top: 6px; padding: 6px 10px; background: #fef3c7; border-radius: 4px; font-size: 12px; color: #92400e;"><strong>Delivery Note:</strong> ' + escapeHtml(params.notes) + '</div>' : '') +
           '</div>' +
         '</div>' +
 
@@ -390,7 +403,7 @@ function sendOwnerAlertEmail(params) {
 
         '<!-- 1-Click Action Buttons for Store Owner -->' +
         '<div style="text-align: center; margin-top: 24px; padding-top: 18px; border-top: 1px solid #e5e7eb;">' +
-          '<a href="https://wa.me/' + wpPhone + '?text=Hello%20' + encodeURIComponent(params.customer.fullName || "Customer") + ',%20we%20received%20your%20order%20%23' + params.orderId + '%20on%20' + encodeURIComponent(params.brandName) + '.%20Let%20us%20confirm%20your%20fit!" style="display: inline-block; background: #25d366; color: #ffffff; padding: 12px 22px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; margin-right: 10px; margin-bottom: 8px;">' +
+          '<a href="https://wa.me/' + wpPhone + '?text=Hello%20' + encodeURIComponent(params.customer.fullName || "Customer") + ',%20we%20received%20your%20order%20%23' + encodeURIComponent(params.orderId) + '%20on%20' + encodeURIComponent(params.brandName) + '.%20Let%20us%20confirm%20your%20fit!" style="display: inline-block; background: #25d366; color: #ffffff; padding: 12px 22px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; margin-right: 10px; margin-bottom: 8px;">' +
             '💬 Chat with Customer on WhatsApp' +
           '</a>' +
           (wpPhone ? '<a href="tel:+' + wpPhone + '" style="display: inline-block; background: #181512; color: #d4af37; border: 1px solid #d4af37; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 8px;">📞 Call Customer</a>' : '') +
@@ -399,7 +412,7 @@ function sendOwnerAlertEmail(params) {
 
       '<!-- Footer -->' +
       '<div style="background: #f9fafb; padding: 14px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb;">' +
-        'Logged automatically into Google Sheets: ' + params.brandName + ' Orders.' +
+        'Logged automatically into Google Sheets: ' + escapeHtml(params.brandName) + ' Orders.' +
       '</div>' +
     '</div>' +
   '</body>' +
@@ -422,10 +435,10 @@ function sendCustomerConfirmationEmail(params) {
 
   var itemsTableRows = params.items.map(function(item) {
     return '<tr style="border-bottom: 1px solid #f3f4f6;">' +
-      '<td style="padding: 12px 14px; font-weight: 600; color: #111827;">' + item.name + '</td>' +
-      '<td style="padding: 12px 14px; text-align: center;"><span style="background: #faf8f5; border: 1px solid #e5e7eb; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #111827;">' + (item.size || "Free") + '</span></td>' +
-      '<td style="padding: 12px 14px; text-align: center; font-weight: 700; color: #111827;">' + (item.quantity || 1) + '</td>' +
-      '<td style="padding: 12px 14px; text-align: right; font-weight: 700; color: #b45309;">' + params.currency + (item.price * (item.quantity || 1)) + '</td>' +
+      '<td style="padding: 12px 14px; font-weight: 600; color: #111827;">' + escapeHtml(item.name) + '</td>' +
+      '<td style="padding: 12px 14px; text-align: center;"><span style="background: #faf8f5; border: 1px solid #e5e7eb; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #111827;">' + escapeHtml(item.size || "Free") + '</span></td>' +
+      '<td style="padding: 12px 14px; text-align: center; font-weight: 700; color: #111827;">' + Number(item.quantity || 1) + '</td>' +
+      '<td style="padding: 12px 14px; text-align: right; font-weight: 700; color: #b45309;">' + escapeHtml(params.currency) + (Number(item.price || 0) * Number(item.quantity || 1)) + '</td>' +
     '</tr>';
   }).join("");
 
@@ -437,15 +450,15 @@ function sendCustomerConfirmationEmail(params) {
       
       '<!-- Royal Luxury Brand Header -->' +
       '<div style="background: linear-gradient(180deg, #181512 0%, #0d0b09 100%); padding: 36px 24px; text-align: center; border-bottom: 2px solid #d4af37;">' +
-        '<h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 0.16em; text-transform: uppercase; font-family: Georgia, serif;">' + params.brandName + '</h1>' +
+        '<h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 0.16em; text-transform: uppercase; font-family: Georgia, serif;">' + escapeHtml(params.brandName) + '</h1>' +
         '<p style="color: #d4af37; font-size: 12px; margin: 6px 0 0 0; letter-spacing: 0.08em; text-transform: uppercase;">Crafted for Comfort, Worn with Grace</p>' +
       '</div>' +
 
       '<!-- Welcome Banner -->' +
       '<div style="padding: 28px 24px 20px;">' +
-        '<h2 style="font-size: 20px; color: #111827; margin: 0 0 8px 0; font-family: Georgia, serif;">Thank You for Your Order, ' + params.customerName + '!</h2>' +
+        '<h2 style="font-size: 20px; color: #111827; margin: 0 0 8px 0; font-family: Georgia, serif;">Thank You for Your Order, ' + escapeHtml(params.customerName) + '!</h2>' +
         '<p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">' +
-          'We have received your order <strong>#' + params.orderId + '</strong>. Our master artisans are preparing your silhouettes with utmost care and precision.' +
+          'We have received your order <strong>#' + escapeHtml(params.orderId) + '</strong>. Our master artisans are preparing your silhouettes with utmost care and precision.' +
         '</p>' +
 
         '<!-- Payment Box -->' +
@@ -456,10 +469,10 @@ function sendCustomerConfirmationEmail(params) {
               '✅ Payment Verified & Received' +
             '</div>' +
             '<div style="font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 6px;">' +
-              'Paid Online via Razorpay' + (params.razorpayPaymentId ? ' &bull; <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px solid #10b981; border-radius: 4px; color: #047857; font-size: 13px;">ID: ' + params.razorpayPaymentId + '</span>' : '') +
+              'Paid Online via Razorpay' + (params.razorpayPaymentId ? ' &bull; <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px solid #10b981; border-radius: 4px; color: #047857; font-size: 13px;">ID: ' + escapeHtml(params.razorpayPaymentId) + '</span>' : '') +
             '</div>' +
             '<div style="font-size: 13px; color: #374151; line-height: 1.5;">' +
-              'We have received your full online payment of <strong>' + params.currency + params.total + '</strong>. Your order is confirmed and our master artisans have begun preparing your garments for express dispatch.' +
+              'We have received your full online payment of <strong>' + escapeHtml(params.currency) + Number(params.total || 0) + '</strong>. Your order is confirmed and our master artisans have begun preparing your garments for express dispatch.' +
             '</div>' +
           '</div>' : 
           '<!-- UPI Payment Box (Unpaid Orders) -->' +
@@ -468,10 +481,10 @@ function sendCustomerConfirmationEmail(params) {
               '💳 UPI Payment Details' +
             '</div>' +
             '<div style="font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 6px;">' +
-              'UPI ID: <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px dashed #d4af37; border-radius: 4px; color: #b45309;">' + params.adminUpiId + '</span>' +
+              'UPI ID: <span style="font-family: monospace; background: #ffffff; padding: 2px 8px; border: 1px dashed #d4af37; border-radius: 4px; color: #b45309;">' + escapeHtml(params.adminUpiId) + '</span>' +
             '</div>' +
             '<div style="font-size: 13px; color: #4b5563; line-height: 1.5;">' +
-              'Please complete the payment of <strong>' + params.currency + params.total + '</strong> via UPI for priority express dispatch.' +
+              'Please complete the payment of <strong>' + escapeHtml(params.currency) + Number(params.total || 0) + '</strong> via UPI for priority express dispatch.' +
             '</div>' +
           '</div>'
         ) +
@@ -493,15 +506,15 @@ function sendCustomerConfirmationEmail(params) {
           '<tfoot>' +
             '<tr style="background: #faf8f5;">' +
               '<td colspan="3" style="padding: 10px 14px; text-align: right; font-weight: 600; color: #6b7280;">Subtotal:</td>' +
-              '<td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #111827;">' + params.currency + params.subtotal + '</td>' +
+              '<td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #111827;">' + escapeHtml(params.currency) + Number(params.subtotal || 0) + '</td>' +
             '</tr>' +
             '<tr style="background: #faf8f5;">' +
               '<td colspan="3" style="padding: 6px 14px; text-align: right; font-weight: 600; color: #6b7280;">Shipping:</td>' +
-              '<td style="padding: 6px 14px; text-align: right; font-weight: 700; color: #10b981;">' + (params.shippingFee === 0 ? "FREE" : params.currency + params.shippingFee) + '</td>' +
+              '<td style="padding: 6px 14px; text-align: right; font-weight: 700; color: #10b981;">' + (params.shippingFee === 0 ? "FREE" : escapeHtml(params.currency) + Number(params.shippingFee || 0)) + '</td>' +
             '</tr>' +
             '<tr style="background: #181512; color: #ffffff;">' +
               '<td colspan="3" style="padding: 12px 14px; text-align: right; font-weight: 800; font-size: 14px;">Total Amount:</td>' +
-              '<td style="padding: 12px 14px; text-align: right; font-weight: 800; font-size: 16px; color: #d4af37;">' + params.currency + params.total + '</td>' +
+              '<td style="padding: 12px 14px; text-align: right; font-weight: 800; font-size: 16px; color: #d4af37;">' + escapeHtml(params.currency) + Number(params.total || 0) + '</td>' +
             '</tr>' +
           '</tfoot>' +
         '</table>' +
@@ -510,15 +523,15 @@ function sendCustomerConfirmationEmail(params) {
         '<div style="background: #faf8f5; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px;">' +
           '<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin-bottom: 4px;">Shipping Address</div>' +
           '<div style="font-size: 13.5px; line-height: 1.5; color: #1f2937;">' +
-            '<strong>' + params.customerName + '</strong><br/>' +
-            params.address + '<br/>' +
-            'Phone: ' + params.customerPhone +
+            '<strong>' + escapeHtml(params.customerName) + '</strong><br/>' +
+            escapeHtml(params.address) + '<br/>' +
+            'Phone: ' + escapeHtml(params.customerPhone) +
           '</div>' +
         '</div>' +
 
         '<!-- WhatsApp Stylist Help CTA -->' +
         '<div style="text-align: center; margin-top: 10px;">' +
-          '<a href="https://wa.me/' + wpAdminPhone + '?text=Hello%20' + encodeURIComponent(params.brandName) + '%20Team,%20I%20have%20placed%20order%20%23' + params.orderId + '%20and%20would%20like%20fit%20verification." style="display: inline-block; background: #25d366; color: #ffffff; padding: 13px 26px; border-radius: 30px; text-decoration: none; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);">' +
+          '<a href="https://wa.me/' + wpAdminPhone + '?text=Hello%20' + encodeURIComponent(params.brandName) + '%20Team,%20I%20have%20placed%20order%20%23' + encodeURIComponent(params.orderId) + '%20and%20would%20like%20fit%20verification." style="display: inline-block; background: #25d366; color: #ffffff; padding: 13px 26px; border-radius: 30px; text-decoration: none; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);">' +
             '💬 Connect with Stylist on WhatsApp' +
           '</a>' +
         '</div>' +
@@ -527,8 +540,8 @@ function sendCustomerConfirmationEmail(params) {
 
       '<!-- Footer -->' +
       '<div style="background: #181512; padding: 22px 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #d4af37;">' +
-        '<p style="margin: 0 0 6px 0; color: #d4af37; font-weight: 700;">' + params.brandName + ' Atelier & Boutique</p>' +
-        '<p style="margin: 0 0 6px 0;">' + params.storeAddress + '</p>' +
+        '<p style="margin: 0 0 6px 0; color: #d4af37; font-weight: 700;">' + escapeHtml(params.brandName) + ' Atelier & Boutique</p>' +
+        '<p style="margin: 0 0 6px 0;">' + escapeHtml(params.storeAddress) + '</p>' +
         '<p style="margin: 0; font-size: 11px; color: #6b7280;">Support WhatsApp: +' + wpAdminPhone + ' • All rights reserved.</p>' +
       '</div>' +
     '</div>' +

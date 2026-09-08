@@ -8,13 +8,13 @@ export const handler = async (event) => {
     };
   }
 
-  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_live_TYnxFeonLIDmVJ";
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || "0Vpjg7yJ46lZXRrJVSFAZEA0";
+  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!key_id || !key_secret) {
     return {
       statusCode: 401,
-      body: JSON.stringify({ error: "Razorpay credentials not configured" })
+      body: JSON.stringify({ error: "Razorpay credentials not configured in environment variables" })
     };
   }
 
