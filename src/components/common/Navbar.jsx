@@ -100,47 +100,21 @@ export const Navbar = () => {
         <div style={{ display: "flex", alignItems: "center", minWidth: 0, flexShrink: 1 }}>
           <button
             onClick={navigateToHome}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "clamp(8px, 1.8vw, 14px)",
-              padding: 0,
-              minWidth: 0,
-              textAlign: "left"
-            }}
+            className="nav-brand-btn"
             title="Return to Home Catalog"
           >
             {/* Peacock Emblem with crisp golden ring */}
-            <div style={{
-              width: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)",
-              height: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)",
-              borderRadius: "50%",
-              background: "#ffffff",
-              padding: "2px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 10px rgba(44, 30, 10, 0.12)",
-              border: "1.5px solid var(--accent-gold-dark)",
-              overflow: "hidden",
-              transition: "all var(--transition-base)",
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06) rotate(3deg)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1) rotate(0deg)")}
+            <div 
+              className="nav-brand-logo-frame"
+              style={{
+                width: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)",
+                height: isScrolled ? "clamp(34px, 7vw, 44px)" : "clamp(38px, 8vw, 50px)"
+              }}
             >
               <img
                 src="/vanshra-logo.png"
                 alt="Vanshra Logo"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  objectFit: "contain"
-                }}
+                className="nav-brand-logo-img"
               />
             </div>
 
