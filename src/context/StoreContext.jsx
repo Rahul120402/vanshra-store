@@ -1413,12 +1413,25 @@ export const StoreProvider = ({ children }) => {
     try {
       if (jsonData.products && Array.isArray(jsonData.products)) {
         setProducts(jsonData.products);
+        safeSetStorage(STORAGE_KEYS.PRODUCTS, jsonData.products);
+        if (isFirebaseConfigured()) {
+          jsonData.products.forEach((p) => saveProductToCloud(p));
+        }
       }
       if (jsonData.orders && Array.isArray(jsonData.orders)) {
-        setOrders(jsonData.orders);
+        const cleaned = jsonData.orders.map(normalizeOrder).filter(Boolean);
+        setOrders(cleaned);
+        safeSetStorage(STORAGE_KEYS.ORDERS, cleaned);
+        if (isFirebaseConfigured()) {
+          cleaned.forEach((o) => saveOrderToCloud(o));
+        }
       }
       if (jsonData.settings && typeof jsonData.settings === "object") {
         setSettings(jsonData.settings);
+        safeSetStorage(STORAGE_KEYS.SETTINGS, jsonData.settings);
+        if (isFirebaseConfigured()) {
+          saveSettingsToCloud(jsonData.settings);
+        }
       }
       showToast("Store data successfully imported & restored!", "success");
       return true;
