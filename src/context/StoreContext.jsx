@@ -1265,25 +1265,24 @@ export const StoreProvider = ({ children }) => {
     const nowIso = new Date().toISOString();
     let updatedOrderObj = null;
 
-    setOrders((prev) => {
-      const next = prev.map((order) => {
-        if (order.id === orderId) {
-          updatedOrderObj = normalizeOrder({
-            ...order,
-            status: newStatus,
-            updatedAt: nowIso,
-            dispatchInfo: {
-              ...(order.dispatchInfo || {}),
-              ...dispatchData
-            }
-          });
-          return updatedOrderObj;
-        }
-        return order;
-      });
-      safeSetStorage(STORAGE_KEYS.ORDERS, next);
-      return next;
+    const next = orders.map((order) => {
+      if (order.id === orderId) {
+        updatedOrderObj = normalizeOrder({
+          ...order,
+          status: newStatus,
+          updatedAt: nowIso,
+          dispatchInfo: {
+            ...(order.dispatchInfo || {}),
+            ...dispatchData
+          }
+        });
+        return updatedOrderObj;
+      }
+      return order;
     });
+
+    setOrders(next);
+    safeSetStorage(STORAGE_KEYS.ORDERS, next);
 
     if (updatedOrderObj) {
       setSelectedOrderForDetail((prev) => (prev && prev.id === orderId ? updatedOrderObj : prev));
@@ -1305,11 +1304,9 @@ export const StoreProvider = ({ children }) => {
   };
 
   const deleteOrder = (orderId) => {
-    setOrders((prev) => {
-      const next = prev.filter((o) => o.id !== orderId);
-      safeSetStorage(STORAGE_KEYS.ORDERS, next);
-      return next;
-    });
+    const next = orders.filter((o) => o.id !== orderId);
+    setOrders(next);
+    safeSetStorage(STORAGE_KEYS.ORDERS, next);
     if (isFirebaseConfigured()) {
       deleteOrderFromCloud(orderId);
     }
@@ -1364,14 +1361,12 @@ export const StoreProvider = ({ children }) => {
       showToast("PIN must be at least 4 digits", "error");
       return false;
     }
-    setSettings((prev) => {
-      const updated = { ...prev, adminPin: cleanPin };
-      safeSetStorage(STORAGE_KEYS.SETTINGS, updated);
-      if (isFirebaseConfigured()) {
-        saveSettingsToCloud(updated);
-      }
-      return updated;
-    });
+    const updated = { ...settings, adminPin: cleanPin };
+    setSettings(updated);
+    safeSetStorage(STORAGE_KEYS.SETTINGS, updated);
+    if (isFirebaseConfigured()) {
+      saveSettingsToCloud(updated);
+    }
     showToast("Owner security PIN updated successfully!", "success");
     return true;
   };
@@ -1385,13 +1380,12 @@ export const StoreProvider = ({ children }) => {
   };
 
   const updateSettings = (newSettings) => {
-    setSettings((prev) => {
-      const merged = { ...prev, ...newSettings };
-      if (isFirebaseConfigured()) {
-        saveSettingsToCloud(merged);
-      }
-      return merged;
-    });
+    const merged = { ...settings, ...newSettings };
+    setSettings(merged);
+    safeSetStorage(STORAGE_KEYS.SETTINGS, merged);
+    if (isFirebaseConfigured()) {
+      saveSettingsToCloud(merged);
+    }
     showToast("Store settings saved successfully!", "success");
   };
 
