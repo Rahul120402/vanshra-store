@@ -202,6 +202,7 @@ export const ProductDetailPage = () => {
               <img
                 src={product.images?.[activeImageIdx] || product.images?.[0] || FALLBACK_PRODUCT_IMAGE}
                 alt={product.name}
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
@@ -258,24 +259,22 @@ export const ProductDetailPage = () => {
                 <button
                   onClick={handleShare}
                   style={{
-                    background: "rgba(255, 255, 255, 0.94)",
-                    backdropFilter: "blur(10px)",
-                    WebkitBackdropFilter: "blur(10px)",
-                    border: "1.5px solid var(--border-gold-bright)",
+                    width: "38px",
+                    height: "38px",
                     borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
+                    background: "rgba(24, 21, 18, 0.75)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
-                    color: "var(--text-primary)",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-                    transition: "transform var(--transition-fast)"
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
+                    transition: "all var(--transition-fast)"
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.12)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                  title="Share Design"
+                  title="Share this Silhouette"
                 >
                   <Share2 size={16} />
                 </button>
@@ -302,12 +301,14 @@ export const ProductDetailPage = () => {
                       opacity: activeImageIdx === idx ? 1 : 0.65,
                       boxShadow: activeImageIdx === idx ? "0 4px 16px rgba(179, 135, 40, 0.38)" : "none",
                       transform: activeImageIdx === idx ? "scale(1.03)" : "scale(1)",
-                      transition: "all var(--transition-fast)"
+                      transition: "transform 0.2s ease, opacity 0.2s ease"
                     }}
                   >
                     <img 
                       src={imgUrl || FALLBACK_PRODUCT_IMAGE} 
                       alt={`Thumbnail ${idx + 1}`} 
+                      loading="lazy"
+                      decoding="async"
                       referrerPolicy="no-referrer"
                       onError={(e) => {
                         if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {

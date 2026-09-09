@@ -766,8 +766,8 @@ export const StoreProvider = ({ children }) => {
     // Instant initial sync on page load
     syncWithCloud();
 
-    // 6-second live polling interval for seamless multi-device updates
-    const interval = setInterval(syncWithCloud, 6000);
+    // 30-second live background polling interval (fast window focus/visibility sync handles instant updates)
+    const interval = setInterval(syncWithCloud, 30000);
 
     // Sync immediately whenever user switches tabs or focuses window
     const handleVisibilityChange = () => {

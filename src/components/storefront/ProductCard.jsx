@@ -79,7 +79,9 @@ export const ProductCard = ({ product }) => {
         background: "#ffffff",
         border: "1px solid var(--border-gold)",
         boxShadow: "0 4px 20px rgba(44, 30, 10, 0.05)",
-        transition: "all var(--transition-base)",
+        transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease",
+        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
+        willChange: "transform",
         width: "100%",
         maxWidth: "100%"
       }}
@@ -101,6 +103,8 @@ export const ProductCard = ({ product }) => {
               : product.images?.[0] || FALLBACK_PRODUCT_IMAGE
           }
           alt={product.name}
+          loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={(e) => {
             if (e.currentTarget.src !== FALLBACK_PRODUCT_IMAGE) {
@@ -113,6 +117,7 @@ export const ProductCard = ({ product }) => {
             width: "100%",
             height: "100%",
             objectFit: "cover",
+            willChange: "transform",
             transition: "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
             transform: isHovered ? "scale(1.08)" : "scale(1)"
           }}
@@ -123,6 +128,8 @@ export const ProductCard = ({ product }) => {
           <img
             src={product.images[1]}
             alt=""
+            loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             aria-hidden="true"
             style={{ display: "none" }}

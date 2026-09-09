@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useStore } from "../../context/StoreContext";
 import { ProductCard } from "./ProductCard";
 import { CategoryPills } from "./CategoryPills";
@@ -53,44 +53,45 @@ export const ProductGrid = () => {
     return () => observer.disconnect();
   }, [visibleCount, activeCategory, searchQuery, sizeFilter, sortBy, products]);
 
-  // Filter products
-  const filteredProducts = products.filter((product) => {
-    // 1. Category Filter
-    if (activeCategory !== "All" && product.category !== activeCategory) {
-      return false;
-    }
-
-    // 2. Search Query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchName = product.name.toLowerCase().includes(query);
-      const matchCat = product.category.toLowerCase().includes(query);
-      const matchDesc = product.description.toLowerCase().includes(query);
-      const matchColor = product.colors?.some((c) => c.name.toLowerCase().includes(query));
-      if (!matchName && !matchCat && !matchDesc && !matchColor) {
+  // Memoized Filtered and Sorted products for high-performance rendering
+  const sortedProducts = useMemo(() => {
+    const filtered = products.filter((product) => {
+      // 1. Category Filter
+      if (activeCategory !== "All" && product.category !== activeCategory) {
         return false;
       }
-    }
 
-    // 3. Size Availability Filter
-    if (sizeFilter !== "All") {
-      const sizeStock = product.sizes?.[sizeFilter] || 0;
-      if (sizeStock <= 0) return false;
-    }
+      // 2. Search Query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchName = product.name?.toLowerCase().includes(query);
+        const matchCat = product.category?.toLowerCase().includes(query);
+        const matchDesc = product.description?.toLowerCase().includes(query);
+        const matchColor = product.colors?.some((c) => c.name?.toLowerCase().includes(query));
+        if (!matchName && !matchCat && !matchDesc && !matchColor) {
+          return false;
+        }
+      }
 
-    return true;
-  });
+      // 3. Size Availability Filter
+      if (sizeFilter !== "All") {
+        const sizeStock = product.sizes?.[sizeFilter] || 0;
+        if (sizeStock <= 0) return false;
+      }
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === "price-low") return a.price - b.price;
-    if (sortBy === "price-high") return b.price - a.price;
-    if (sortBy === "newest") return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    // Default "featured"
-    if (a.isBestSeller && !b.isBestSeller) return -1;
-    if (!a.isBestSeller && b.isBestSeller) return 1;
-    return 0;
-  });
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "price-low") return a.price - b.price;
+      if (sortBy === "price-high") return b.price - a.price;
+      if (sortBy === "newest") return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      // Default "featured"
+      if (a.isBestSeller && !b.isBestSeller) return -1;
+      if (!a.isBestSeller && b.isBestSeller) return 1;
+      return 0;
+    });
+  }, [products, activeCategory, searchQuery, sizeFilter, sortBy]);
 
   const displayedProducts = sortedProducts.slice(0, visibleCount);
   const remainingCount = sortedProducts.length - displayedProducts.length;
