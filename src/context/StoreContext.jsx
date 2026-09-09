@@ -713,18 +713,28 @@ export const StoreProvider = ({ children }) => {
   }, [settings.brandName, settings.tagline]);
 
   // ==========================================
-  // Optimized Cloud Synchronization & Caching
-  // ==========================================
+  // Module-level in-flight guards to completely prevent concurrent or looped executions
+  let isProductsSyncInProgress = false;
+  let isOrdersSyncInProgress = false;
 
-  // 1. Products & Settings Sync (Ultra-Optimized Cache-First with Version Gatekeeper)
+  // 1. Products & Settings Sync (Cache-First with Version Check - Guaranteed Run-Once)
   const syncProductsWithCloud = useCallback(async (force = false) => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
 
     const now = Date.now();
-    const hasLocalProducts = Array.isArray(products) && products.length > 0;
+    let hasLocalProducts = false;
+    try {
+      const savedProds = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+      const parsed = savedProds ? JSON.parse(savedProds) : [];
+      hasLocalProducts = Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      hasLocalProducts = false;
+    }
+
     const localVersion = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
 
     try {
+      isProductsSyncInProgress = true;
       setIsSyncingProducts(true);
 
       // Lightweight Single-Document Version Check (Cost: Only 1 Firestore read!)
@@ -736,6 +746,7 @@ export const StoreProvider = ({ children }) => {
           // Version has NOT changed! Reuse local cache with 0 product collection reads!
           safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
           setIsSyncingProducts(false);
+          isProductsSyncInProgress = false;
           return;
         }
       }
@@ -780,14 +791,16 @@ export const StoreProvider = ({ children }) => {
       console.warn("[VANSHRA Cloud Products Sync]", err);
     } finally {
       setIsSyncingProducts(false);
+      isProductsSyncInProgress = false;
     }
-  }, [products]);
+  }, []);
 
   // 2. Orders Sync (Strictly Authenticated Admin Only - Zero Reads for Normal Visitors)
   const syncOrdersWithCloud = useCallback(async (force = false) => {
-    if (!isFirebaseConfigured() || !isAdminAuthenticated) return;
+    if (!isFirebaseConfigured() || !isAdminAuthenticated || isOrdersSyncInProgress) return;
 
     try {
+      isOrdersSyncInProgress = true;
       setIsSyncingOrders(true);
       const cloudOrders = await fetchCloudOrders();
 
@@ -815,6 +828,7 @@ export const StoreProvider = ({ children }) => {
       console.warn("[VANSHRA Cloud Orders Sync]", err);
     } finally {
       setIsSyncingOrders(false);
+      isOrdersSyncInProgress = false;
     }
   }, [isAdminAuthenticated]);
 
@@ -861,17 +875,19 @@ export const StoreProvider = ({ children }) => {
     return null;
   }, [orders]);
 
-  // Initial mount sync: Cache-first single check on page load
+  // Initial mount sync: Run EXACTLY ONCE on page load (Cache-first single check)
   useEffect(() => {
     syncProductsWithCloud();
-  }, [syncProductsWithCloud]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Admin orders sync: Fetches orders only when Admin logs in
+  // Admin orders sync: Runs strictly when admin authenticates
   useEffect(() => {
     if (isAdminAuthenticated) {
       syncOrdersWithCloud();
     }
-  }, [isAdminAuthenticated, syncOrdersWithCloud]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdminAuthenticated]);
 
   // ==================== PRODUCT ACTIONS ====================
 
