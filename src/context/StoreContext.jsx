@@ -716,36 +716,34 @@ export const StoreProvider = ({ children }) => {
   // Optimized Cloud Synchronization & Caching
   // ==========================================
 
-  // 1. Products & Settings Sync (Smart Cache-First with Version Check - 99% Read Reduction)
+  // 1. Products & Settings Sync (Ultra-Optimized Cache-First with Version Gatekeeper)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured()) return;
 
-    const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL
     const now = Date.now();
-    const lastSyncStr = localStorage.getItem(STORAGE_KEYS.LAST_PRODUCT_SYNC);
-    const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
-    const isCacheExpired = !lastSync || (now - lastSync > CACHE_TTL_MS);
+    const hasLocalProducts = Array.isArray(products) && products.length > 0;
+    const localVersion = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
 
     try {
       setIsSyncingProducts(true);
 
       // Lightweight Single-Document Version Check (Cost: Only 1 Firestore read!)
-      // If cache is still valid and not forced, check if version changed before reading entire collection
-      if (!force && !isCacheExpired) {
-        const versionMeta = await fetchStoreVersion();
-        const localVersion = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
-        if (versionMeta?.productsUpdatedAt && localVersion && versionMeta.productsUpdatedAt === localVersion) {
-          // Version is identical, reuse cached products with 0 collection reads!
+      const versionMeta = await fetchStoreVersion();
+
+      // If we have local products and not forcing, check if version matches
+      if (!force && hasLocalProducts && versionMeta && versionMeta.productsUpdatedAt) {
+        if (localVersion && versionMeta.productsUpdatedAt === localVersion) {
+          // Version has NOT changed! Reuse local cache with 0 product collection reads!
+          safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
           setIsSyncingProducts(false);
           return;
         }
       }
 
-      // Read updated products & settings only when version changed or cache expired
-      const [cloudProducts, cloudSettings, versionMeta] = await Promise.all([
+      // Read updated products & settings only when version changed or force requested
+      const [cloudProducts, cloudSettings] = await Promise.all([
         fetchCloudProducts(),
-        fetchCloudSettings(),
-        fetchStoreVersion()
+        fetchCloudSettings()
       ]);
 
       if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
@@ -768,17 +766,22 @@ export const StoreProvider = ({ children }) => {
         });
       }
 
-      // Update sync markers
-      safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
-      if (versionMeta?.productsUpdatedAt) {
+      // Update version and sync markers
+      if (!versionMeta || !versionMeta.productsUpdatedAt) {
+        const newIso = new Date().toISOString();
+        updateStoreVersion({ productsUpdatedAt: newIso });
+        safeSetStorage(STORAGE_KEYS.STORE_VERSION, newIso);
+      } else {
         safeSetStorage(STORAGE_KEYS.STORE_VERSION, versionMeta.productsUpdatedAt);
       }
+
+      safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
     } catch (err) {
       console.warn("[VANSHRA Cloud Products Sync]", err);
     } finally {
       setIsSyncingProducts(false);
     }
-  }, []);
+  }, [products]);
 
   // 2. Orders Sync (Strictly Authenticated Admin Only - Zero Reads for Normal Visitors)
   const syncOrdersWithCloud = useCallback(async (force = false) => {
