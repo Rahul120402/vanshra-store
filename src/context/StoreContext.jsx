@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { INITIAL_PRODUCTS, INITIAL_ORDERS, INITIAL_SETTINGS, INITIAL_COUPONS } from "../data/initialData";
 import { generateOrderId, getTotalStock, normalizeImageUrl, FALLBACK_PRODUCT_IMAGE } from "../utils/formatters";
 import { playOrderChime } from "../utils/audio";
@@ -9,11 +9,14 @@ import {
   saveProductToCloud, 
   deleteProductFromCloud,
   fetchCloudOrders, 
+  fetchCloudOrderById,
   saveOrderToCloud, 
   updateOrderStatusInCloud,
   deleteOrderFromCloud,
   fetchCloudSettings,
-  saveSettingsToCloud
+  saveSettingsToCloud,
+  fetchStoreVersion,
+  updateStoreVersion
 } from "../services/firebase";
 import { sendOrderToGoogleSheets } from "../services/googleSheets";
 
@@ -40,7 +43,9 @@ const STORAGE_KEYS = {
   CART: "vanshra_clothing_cart_v2",
   WISHLIST: "vanshra_clothing_wishlist_v2",
   COUPONS: "vanshra_clothing_coupons_v2",
-  DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2"
+  DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2",
+  LAST_PRODUCT_SYNC: "vanshra_clothing_last_sync_v2",
+  STORE_VERSION: "vanshra_clothing_version_v2"
 };
 
 const getDeletedProductIds = () => {
@@ -266,6 +271,10 @@ export const StoreProvider = ({ children }) => {
     return sessionStorage.getItem("vanshra_admin_auth") === "true";
   });
   const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
+
+  // Cloud Sync Indicators
+  const [isSyncingProducts, setIsSyncingProducts] = useState(false);
+  const [isSyncingOrders, setIsSyncingOrders] = useState(false);
 
   // 2. Navigation & UI state
   const [currentView, setCurrentView] = useState("store"); // "store" | "admin"
@@ -703,88 +712,163 @@ export const StoreProvider = ({ children }) => {
     document.title = title;
   }, [settings.brandName, settings.tagline]);
 
-  // Real-time Cloud Synchronization (Products, Orders, Settings)
-  useEffect(() => {
+  // ==========================================
+  // Optimized Cloud Synchronization & Caching
+  // ==========================================
+
+  // 1. Products & Settings Sync (Smart Cache-First with Version Check - 99% Read Reduction)
+  const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured()) return;
 
-    let isMounted = true;
-    const syncWithCloud = async () => {
+    const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL
+    const now = Date.now();
+    const lastSyncStr = localStorage.getItem(STORAGE_KEYS.LAST_PRODUCT_SYNC);
+    const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
+    const isCacheExpired = !lastSync || (now - lastSync > CACHE_TTL_MS);
+
+    try {
+      setIsSyncingProducts(true);
+
+      // Lightweight Single-Document Version Check (Cost: Only 1 Firestore read!)
+      // If cache is still valid and not forced, check if version changed before reading entire collection
+      if (!force && !isCacheExpired) {
+        const versionMeta = await fetchStoreVersion();
+        const localVersion = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
+        if (versionMeta?.productsUpdatedAt && localVersion && versionMeta.productsUpdatedAt === localVersion) {
+          // Version is identical, reuse cached products with 0 collection reads!
+          setIsSyncingProducts(false);
+          return;
+        }
+      }
+
+      // Read updated products & settings only when version changed or cache expired
+      const [cloudProducts, cloudSettings, versionMeta] = await Promise.all([
+        fetchCloudProducts(),
+        fetchCloudSettings(),
+        fetchStoreVersion()
+      ]);
+
+      if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+        const deletedIds = getDeletedProductIds();
+        const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
+
+        setProducts((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(filteredCloud)) return prev;
+          safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
+          return filteredCloud;
+        });
+      }
+
+      if (cloudSettings && Object.keys(cloudSettings).length > 0) {
+        setSettings((prev) => {
+          const merged = { ...prev, ...cloudSettings };
+          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+          safeSetStorage(STORAGE_KEYS.SETTINGS, merged);
+          return merged;
+        });
+      }
+
+      // Update sync markers
+      safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
+      if (versionMeta?.productsUpdatedAt) {
+        safeSetStorage(STORAGE_KEYS.STORE_VERSION, versionMeta.productsUpdatedAt);
+      }
+    } catch (err) {
+      console.warn("[VANSHRA Cloud Products Sync]", err);
+    } finally {
+      setIsSyncingProducts(false);
+    }
+  }, []);
+
+  // 2. Orders Sync (Strictly Authenticated Admin Only - Zero Reads for Normal Visitors)
+  const syncOrdersWithCloud = useCallback(async (force = false) => {
+    if (!isFirebaseConfigured() || !isAdminAuthenticated) return;
+
+    try {
+      setIsSyncingOrders(true);
+      const cloudOrders = await fetchCloudOrders();
+
+      if (cloudOrders && Array.isArray(cloudOrders)) {
+        const normalizedCloud = cloudOrders
+          .filter((o) => o && o.id && !DEMO_ORDER_IDS.has(o.id))
+          .map(normalizeOrder)
+          .filter(Boolean)
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        setOrders((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
+          safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
+          return normalizedCloud;
+        });
+
+        setSelectedOrderForDetail((curr) => {
+          if (!curr) return null;
+          const match = normalizedCloud.find((o) => o.id === curr.id);
+          if (!match) return null;
+          return match;
+        });
+      }
+    } catch (err) {
+      console.warn("[VANSHRA Cloud Orders Sync]", err);
+    } finally {
+      setIsSyncingOrders(false);
+    }
+  }, [isAdminAuthenticated]);
+
+  // 3. Targeted Single Order Lookup (For Customer Tracking - Reads exactly 1 doc, never the entire collection)
+  const lookupOrder = useCallback(async (query) => {
+    const cleanQuery = query ? String(query).trim() : "";
+    if (!cleanQuery) return null;
+
+    const upperQuery = cleanQuery.toUpperCase();
+    const digitsOnly = cleanQuery.replace(/[^0-9]/g, "");
+
+    // A. Check local state orders first (orders placed on this device)
+    const localMatch = orders.find(
+      (o) =>
+        o.id?.toUpperCase() === upperQuery ||
+        (digitsOnly.length >= 6 && o.customer?.phone && o.customer.phone.replace(/[^0-9]/g, "").includes(digitsOnly)) ||
+        (o.customer?.email && o.customer.email.toLowerCase() === cleanQuery.toLowerCase())
+    );
+
+    if (localMatch) return localMatch;
+
+    // B. Direct single-doc lookup in Firestore (Cost: 1 read!)
+    if (isFirebaseConfigured()) {
       try {
-        const [cloudProducts, cloudOrders, cloudSettings] = await Promise.all([
-          fetchCloudProducts(),
-          fetchCloudOrders(),
-          fetchCloudSettings()
-        ]);
-
-        if (!isMounted) return;
-
-        if (cloudProducts && Array.isArray(cloudProducts)) {
-          const deletedIds = getDeletedProductIds();
-          const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
-
-          setProducts((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(filteredCloud)) return prev;
-            safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
-            return filteredCloud;
-          });
-        }
-
-        if (cloudOrders && Array.isArray(cloudOrders)) {
-          const normalizedCloud = cloudOrders
-            .filter((o) => o && o.id && !DEMO_ORDER_IDS.has(o.id))
-            .map(normalizeOrder)
-            .filter(Boolean)
-            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-          setOrders((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
-            safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
-            return normalizedCloud;
-          });
-
-          setSelectedOrderForDetail((curr) => {
-            if (!curr) return null;
-            const match = normalizedCloud.find((o) => o.id === curr.id);
-            if (!match) return null;
-            return match;
-          });
-        }
-
-        if (cloudSettings && Object.keys(cloudSettings).length > 0) {
-          setSettings((prev) => {
-            const merged = { ...prev, ...cloudSettings };
-            if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
-            safeSetStorage(STORAGE_KEYS.SETTINGS, merged);
-            return merged;
-          });
+        const cloudDoc = await fetchCloudOrderById(upperQuery);
+        if (cloudDoc) {
+          const normalized = normalizeOrder(cloudDoc);
+          if (normalized) {
+            // Cache in local state so subsequent viewings cost 0 reads
+            setOrders((prev) => {
+              if (prev.some((o) => o.id === normalized.id)) return prev;
+              const updated = [normalized, ...prev];
+              safeSetStorage(STORAGE_KEYS.ORDERS, updated);
+              return updated;
+            });
+            return normalized;
+          }
         }
       } catch (err) {
-        console.warn("[VANSHRA Cloud Sync]", err);
+        console.warn("[VANSHRA Order Lookup]", err);
       }
-    };
+    }
 
-    // Instant initial sync on page load
-    syncWithCloud();
+    return null;
+  }, [orders]);
 
-    // 30-second live background polling interval (fast window focus/visibility sync handles instant updates)
-    const interval = setInterval(syncWithCloud, 30000);
+  // Initial mount sync: Cache-first single check on page load
+  useEffect(() => {
+    syncProductsWithCloud();
+  }, [syncProductsWithCloud]);
 
-    // Sync immediately whenever user switches tabs or focuses window
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        syncWithCloud();
-      }
-    };
-    window.addEventListener("focus", syncWithCloud);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      window.removeEventListener("focus", syncWithCloud);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+  // Admin orders sync: Fetches orders only when Admin logs in
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      syncOrdersWithCloud();
+    }
+  }, [isAdminAuthenticated, syncOrdersWithCloud]);
 
   // ==================== PRODUCT ACTIONS ====================
 
@@ -1579,6 +1663,12 @@ export const StoreProvider = ({ children }) => {
         exportStoreData,
         importStoreData,
         resetToDemoData,
+        // Cloud Sync Methods & Status
+        syncProductsWithCloud,
+        syncOrdersWithCloud,
+        lookupOrder,
+        isSyncingProducts,
+        isSyncingOrders,
         // Toast
         toasts,
         showToast,

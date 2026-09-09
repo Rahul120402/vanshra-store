@@ -5,30 +5,35 @@ import {
   X, 
   Search, 
   Truck, 
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
 export const OrderTrackingModal = () => {
-  const { isOrderTrackingOpen, closeOrderTracking, orders, settings } = useStore();
+  const { isOrderTrackingOpen, closeOrderTracking, lookupOrder, settings } = useStore();
   const [searchInput, setSearchInput] = useState("");
   const [searchedOrder, setSearchedOrder] = useState(null);
   const [searchAttempted, setSearchAttempted] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   if (!isOrderTrackingOpen) return null;
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    const query = searchInput.trim().toUpperCase();
+    const query = searchInput.trim();
     if (!query) return;
 
     setSearchAttempted(true);
-    const found = orders.find(
-      (o) =>
-        o.id?.toUpperCase() === query ||
-        (o.customer?.phone && o.customer.phone.replace(/[^0-9]/g, "").includes(query.replace(/[^0-9]/g, ""))) ||
-        (o.customer?.email && o.customer.email.toLowerCase() === searchInput.trim().toLowerCase())
-    );
-    setSearchedOrder(found || null);
+    setIsSearching(true);
+    try {
+      const found = await lookupOrder(query);
+      setSearchedOrder(found || null);
+    } catch (err) {
+      console.warn("Tracking search error:", err);
+      setSearchedOrder(null);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getStatusStepIndex = (status) => {
@@ -106,8 +111,20 @@ export const OrderTrackingModal = () => {
                 autoFocus
               />
             </div>
-            <button type="submit" className="btn btn-gold" style={{ padding: "8px 20px" }}>
-              Track
+            <button 
+              type="submit" 
+              className="btn btn-gold" 
+              style={{ padding: "8px 20px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                "Track"
+              )}
             </button>
           </form>
 

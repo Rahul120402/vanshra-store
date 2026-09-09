@@ -138,6 +138,10 @@ export const saveProductToCloud = async (product) => {
       console.warn(`[VANSHRA Cloud] Save product "${product.name || docId}" failed (${res.status}):`, errText);
     }
 
+    if (res.ok) {
+      updateStoreVersion({ productsUpdatedAt: new Date().toISOString() });
+    }
+
     return res.ok;
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to save product:", err);
@@ -156,6 +160,10 @@ export const deleteProductFromCloud = async (productId) => {
     const res = await fetch(url, {
       method: "DELETE"
     });
+
+    if (res.ok) {
+      updateStoreVersion({ productsUpdatedAt: new Date().toISOString() });
+    }
 
     return res.ok;
   } catch (err) {
@@ -192,6 +200,31 @@ export const fetchCloudOrders = async () => {
     return orders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to fetch orders:", err);
+    return null;
+  }
+};
+
+// Targeted single-order lookup (Consumes only 1 Firestore read instead of reading entire collection)
+export const fetchCloudOrderById = async (orderId) => {
+  if (!isFirebaseConfigured() || !orderId) return null;
+  const config = getFirebaseConfig();
+
+  try {
+    const docId = encodeURIComponent(String(orderId).trim());
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.fields) return null;
+
+    const id = data.name ? data.name.split("/").pop() : orderId;
+    return {
+      ...fromFirestoreFields(data.fields),
+      id
+    };
+  } catch (err) {
+    console.warn("[VANSHRA Cloud] Failed to fetch order by ID:", err);
     return null;
   }
 };
@@ -274,7 +307,7 @@ export const deleteOrderFromCloud = async (orderId) => {
 };
 
 // ==========================================
-// 3. Live Store Settings Synchronization
+// 3. Live Store Settings & Versioning Synchronization
 // ==========================================
 
 export const fetchCloudSettings = async () => {
@@ -311,9 +344,54 @@ export const saveSettingsToCloud = async (settings) => {
       body
     });
 
+    if (res.ok) {
+      updateStoreVersion({ settingsUpdatedAt: new Date().toISOString() });
+    }
+
     return res.ok;
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to save settings:", err);
     return false;
   }
 };
+
+// Lightweight Single-Doc Version Metadata (1 Read only to check if entire catalog changed)
+export const fetchStoreVersion = async () => {
+  if (!isFirebaseConfigured()) return null;
+  const config = getFirebaseConfig();
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/version_meta?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return fromFirestoreFields(data.fields);
+  } catch (err) {
+    return null;
+  }
+};
+
+export const updateStoreVersion = async (updates = {}) => {
+  if (!isFirebaseConfigured()) return false;
+  const config = getFirebaseConfig();
+
+  try {
+    const payload = {
+      updatedAt: new Date().toISOString(),
+      ...updates
+    };
+
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/version_meta?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: toFirestoreFields(payload) })
+    });
+
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
+};
+
