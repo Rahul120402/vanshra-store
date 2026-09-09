@@ -167,6 +167,11 @@ export const normalizeOrder = (order) => {
   };
 };
 
+// Module-level global in-flight & run-once guards (survives re-renders and StrictMode)
+let isProductsSyncInProgress = false;
+let isOrdersSyncInProgress = false;
+let hasInitialProductsSyncRun = false;
+
 export const StoreProvider = ({ children }) => {
   // 1. Core State with LocalStorage initialization
   const [products, setProducts] = useState(() => {
@@ -713,13 +718,13 @@ export const StoreProvider = ({ children }) => {
   }, [settings.brandName, settings.tagline]);
 
   // ==========================================
-  // Module-level in-flight guards to completely prevent concurrent or looped executions
-  let isProductsSyncInProgress = false;
-  let isOrdersSyncInProgress = false;
+  // Optimized Cloud Synchronization & Caching
+  // ==========================================
 
   // 1. Products & Settings Sync (Cache-First with Version Check - Guaranteed Run-Once)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
+    if (!force && hasInitialProductsSyncRun) return;
 
     const now = Date.now();
     let hasLocalProducts = false;
@@ -735,6 +740,7 @@ export const StoreProvider = ({ children }) => {
 
     try {
       isProductsSyncInProgress = true;
+      hasInitialProductsSyncRun = true;
       setIsSyncingProducts(true);
 
       // Lightweight Single-Document Version Check (Cost: Only 1 Firestore read!)
