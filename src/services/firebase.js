@@ -83,8 +83,71 @@ const fromFirestoreFields = (fields) => {
 };
 
 // ==========================================
-// 1. Live Products Synchronization
+// 1. Live Products & 1-Read Catalog Bundle Synchronization
 // ==========================================
+
+// Fetches the entire active catalog in exactly 1 single Firestore document read
+export const fetchCloudCatalog = async () => {
+  if (!isFirebaseConfigured()) return null;
+  const config = getFirebaseConfig();
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      // If catalog_bundle does not exist yet (bootstrap phase), fallback to collection fetch
+      const legacyProducts = await fetchCloudProducts();
+      if (legacyProducts && Array.isArray(legacyProducts) && legacyProducts.length > 0) {
+        // Automatically save initial catalog bundle for future 1-read instant loads
+        saveCatalogBundleToCloud(legacyProducts);
+        return legacyProducts;
+      }
+      return null;
+    }
+
+    const data = await res.json();
+    if (!data.fields) return null;
+    const parsed = fromFirestoreFields(data.fields);
+    return Array.isArray(parsed.products) ? parsed.products : [];
+  } catch (err) {
+    console.warn("[VANSHRA Cloud] Failed to fetch catalog bundle:", err);
+    return null;
+  }
+};
+
+// Saves the entire active catalog array in 1 single document write in Firestore
+export const saveCatalogBundleToCloud = async (products) => {
+  if (!isFirebaseConfigured() || !Array.isArray(products)) return false;
+  const config = getFirebaseConfig();
+  const nowIso = new Date().toISOString();
+
+  try {
+    const payload = {
+      products,
+      updatedAt: nowIso,
+      productCount: products.length
+    };
+
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const body = JSON.stringify({
+      fields: toFirestoreFields(payload)
+    });
+
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+
+    if (res.ok) {
+      updateStoreVersion({ productsUpdatedAt: nowIso });
+    }
+    return res.ok;
+  } catch (err) {
+    console.warn("[VANSHRA Cloud] Failed to save catalog bundle:", err);
+    return false;
+  }
+};
 
 export const fetchCloudProducts = async () => {
   if (!isFirebaseConfigured()) return null;

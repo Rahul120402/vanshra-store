@@ -5,6 +5,8 @@ import { playOrderChime } from "../utils/audio";
 import confetti from "canvas-confetti";
 import { 
   isFirebaseConfigured, 
+  fetchCloudCatalog,
+  saveCatalogBundleToCloud,
   fetchCloudProducts, 
   saveProductToCloud, 
   deleteProductFromCloud,
@@ -757,9 +759,9 @@ export const StoreProvider = ({ children }) => {
         }
       }
 
-      // Read updated products & settings only when version changed or force requested
+      // Read updated catalog bundle (Cost: ONLY 1 Read for ALL products!) & settings in parallel
       const [cloudProducts, cloudSettings] = await Promise.all([
-        fetchCloudProducts(),
+        fetchCloudCatalog(),
         fetchCloudSettings()
       ]);
 
@@ -920,6 +922,7 @@ export const StoreProvider = ({ children }) => {
     });
     if (isFirebaseConfigured()) {
       saveProductToCloud(newProduct);
+      saveCatalogBundleToCloud([newProduct, ...products]);
     }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;
@@ -945,10 +948,13 @@ export const StoreProvider = ({ children }) => {
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
-    if (updatedProdObj && isFirebaseConfigured()) {
-      saveProductToCloud(updatedProdObj).catch((err) =>
-        console.warn(`[VANSHRA Cloud] updateProduct failed for ${productId}:`, err)
-      );
+    if (isFirebaseConfigured()) {
+      if (updatedProdObj) {
+        saveProductToCloud(updatedProdObj).catch((err) =>
+          console.warn(`[VANSHRA Cloud] updateProduct failed for ${productId}:`, err)
+        );
+      }
+      saveCatalogBundleToCloud(next);
     }
     showToast("Product updated successfully!", "success");
   };
@@ -961,6 +967,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       deleteProductFromCloud(productId);
+      saveCatalogBundleToCloud(next);
     }
     showToast("Product removed from catalog", "info");
   };
@@ -988,10 +995,13 @@ export const StoreProvider = ({ children }) => {
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
-    if (updatedProdObj && isFirebaseConfigured()) {
-      saveProductToCloud(updatedProdObj).catch((err) =>
-        console.warn(`[VANSHRA Cloud] updateSizeStock failed for ${productId}:`, err)
-      );
+    if (isFirebaseConfigured()) {
+      if (updatedProdObj) {
+        saveProductToCloud(updatedProdObj).catch((err) =>
+          console.warn(`[VANSHRA Cloud] updateSizeStock failed for ${productId}:`, err)
+        );
+      }
+      saveCatalogBundleToCloud(next);
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
   };
@@ -1324,12 +1334,15 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
 
     // Immediately persist decremented product inventory to Cloud Database (Firestore)
-    if (isFirebaseConfigured() && updatedProductsToSync.length > 0) {
-      updatedProductsToSync.forEach((prod) => {
-        saveProductToCloud(prod).catch((err) =>
-          console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
-        );
-      });
+    if (isFirebaseConfigured()) {
+      saveCatalogBundleToCloud(nextProducts);
+      if (updatedProductsToSync.length > 0) {
+        updatedProductsToSync.forEach((prod) => {
+          saveProductToCloud(prod).catch((err) =>
+            console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
+          );
+        });
+      }
     }
 
     // 2. Save order
@@ -1524,6 +1537,7 @@ export const StoreProvider = ({ children }) => {
         setProducts(jsonData.products);
         safeSetStorage(STORAGE_KEYS.PRODUCTS, jsonData.products);
         if (isFirebaseConfigured()) {
+          saveCatalogBundleToCloud(jsonData.products);
           jsonData.products.forEach((p) => saveProductToCloud(p));
         }
       }
@@ -1557,6 +1571,7 @@ export const StoreProvider = ({ children }) => {
     setProducts(INITIAL_PRODUCTS);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     if (isFirebaseConfigured()) {
+      saveCatalogBundleToCloud(INITIAL_PRODUCTS);
       INITIAL_PRODUCTS.forEach((p) => saveProductToCloud(p));
     }
     setOrders(INITIAL_ORDERS);
