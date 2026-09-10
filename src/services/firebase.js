@@ -239,12 +239,12 @@ export const deleteProductFromCloud = async (productId) => {
 // 2. Live Orders Synchronization
 // ==========================================
 
-export const fetchCloudOrders = async () => {
+export const fetchCloudOrders = async (pageSize = 30) => {
   if (!isFirebaseConfigured()) return null;
   const config = getFirebaseConfig();
 
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders?pageSize=300${config.apiKey ? `&key=${config.apiKey}` : ""}`;
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders?pageSize=${pageSize}${config.apiKey ? `&key=${config.apiKey}` : ""}`;
     const res = await fetch(url);
     if (!res.ok) return null;
 
@@ -298,9 +298,10 @@ export const saveOrderToCloud = async (order) => {
 
   try {
     const docId = String(order.id);
+    const nowIso = new Date().toISOString();
     const orderWithUpdated = {
       ...order,
-      updatedAt: order.updatedAt || new Date().toISOString()
+      updatedAt: order.updatedAt || nowIso
     };
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/orders/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
 
@@ -313,6 +314,10 @@ export const saveOrderToCloud = async (order) => {
       headers: { "Content-Type": "application/json" },
       body
     });
+
+    if (res.ok) {
+      updateStoreVersion({ ordersUpdatedAt: nowIso });
+    }
 
     return res.ok;
   } catch (err) {
@@ -343,6 +348,10 @@ export const updateOrderStatusInCloud = async (orderId, newStatus, updatedAtIso)
       body
     });
 
+    if (res.ok) {
+      updateStoreVersion({ ordersUpdatedAt: nowIso });
+    }
+
     return res.ok;
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to update order status:", err);
@@ -361,6 +370,10 @@ export const deleteOrderFromCloud = async (orderId) => {
     const res = await fetch(url, {
       method: "DELETE"
     });
+
+    if (res.ok) {
+      updateStoreVersion({ ordersUpdatedAt: new Date().toISOString() });
+    }
 
     return res.ok;
   } catch (err) {

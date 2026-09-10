@@ -47,7 +47,8 @@ const STORAGE_KEYS = {
   COUPONS: "vanshra_clothing_coupons_v2",
   DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2",
   LAST_PRODUCT_SYNC: "vanshra_clothing_last_sync_v2",
-  STORE_VERSION: "vanshra_clothing_version_v2"
+  STORE_VERSION: "vanshra_clothing_version_v2",
+  ORDERS_VERSION: "vanshra_clothing_orders_ver_v2"
 };
 
 const getDeletedProductIds = () => {
@@ -173,6 +174,8 @@ export const normalizeOrder = (order) => {
 let isProductsSyncInProgress = false;
 let isOrdersSyncInProgress = false;
 let hasInitialProductsSyncRun = false;
+let lastProductSyncTimestamp = 0;
+let lastOrdersSyncTimestamp = 0;
 
 export const StoreProvider = ({ children }) => {
   // 1. Core State with LocalStorage initialization
@@ -726,7 +729,7 @@ export const StoreProvider = ({ children }) => {
   // 1. Products & Settings Sync (Cache-First with Version Check - Guaranteed Run-Once)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
-    if (!force && hasInitialProductsSyncRun) return;
+    if (!force && hasInitialProductsSyncRun && (Date.now() - lastProductSyncTimestamp < 180000)) return;
 
     const now = Date.now();
     let hasLocalProducts = false;
@@ -786,6 +789,7 @@ export const StoreProvider = ({ children }) => {
       }
 
       // Update version and sync markers
+      lastProductSyncTimestamp = now;
       if (!versionMeta || !versionMeta.productsUpdatedAt) {
         const newIso = new Date().toISOString();
         updateStoreVersion({ productsUpdatedAt: newIso });
@@ -807,10 +811,37 @@ export const StoreProvider = ({ children }) => {
   const syncOrdersWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || !isAdminAuthenticated || isOrdersSyncInProgress) return;
 
+    const now = Date.now();
+    if (!force && (now - lastOrdersSyncTimestamp < 120000)) return;
+
     try {
       isOrdersSyncInProgress = true;
       setIsSyncingOrders(true);
-      const cloudOrders = await fetchCloudOrders();
+
+      const localOrdersVersion = localStorage.getItem(STORAGE_KEYS.ORDERS_VERSION);
+      const versionMeta = await fetchStoreVersion();
+
+      // Check if orders have been modified since last sync
+      let hasLocalOrders = false;
+      try {
+        const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
+        const parsed = saved ? JSON.parse(saved) : [];
+        hasLocalOrders = Array.isArray(parsed) && parsed.length > 0;
+      } catch {
+        hasLocalOrders = false;
+      }
+
+      if (!force && hasLocalOrders && versionMeta && versionMeta.ordersUpdatedAt) {
+        if (localOrdersVersion && versionMeta.ordersUpdatedAt === localOrdersVersion) {
+          // No new orders or order status changes in Firestore! Reuse local storage with 0 reads!
+          lastOrdersSyncTimestamp = now;
+          setIsSyncingOrders(false);
+          isOrdersSyncInProgress = false;
+          return;
+        }
+      }
+
+      const cloudOrders = await fetchCloudOrders(30);
 
       if (cloudOrders && Array.isArray(cloudOrders)) {
         const normalizedCloud = cloudOrders
@@ -820,10 +851,28 @@ export const StoreProvider = ({ children }) => {
           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
         setOrders((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(normalizedCloud)) return prev;
-          safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
-          return normalizedCloud;
+          // Merge with any existing local orders to preserve deep history
+          const existingMap = new Map();
+          normalizedCloud.forEach((o) => existingMap.set(o.id, o));
+          prev.forEach((o) => {
+            if (!existingMap.has(o.id)) {
+              existingMap.set(o.id, o);
+            }
+          });
+          const merged = Array.from(existingMap.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+          safeSetStorage(STORAGE_KEYS.ORDERS, merged);
+          return merged;
         });
+
+        lastOrdersSyncTimestamp = now;
+        if (versionMeta && versionMeta.ordersUpdatedAt) {
+          safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, versionMeta.ordersUpdatedAt);
+        } else {
+          const nowIso = new Date().toISOString();
+          safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, nowIso);
+        }
 
         setSelectedOrderForDetail((curr) => {
           if (!curr) return null;
@@ -1333,19 +1382,12 @@ export const StoreProvider = ({ children }) => {
     setProducts(nextProducts);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
 
-    // Immediately persist decremented product inventory to Cloud Database (Firestore)
+    // Persist decremented inventory to Cloud Catalog in exactly 1 single Write
     if (isFirebaseConfigured()) {
       saveCatalogBundleToCloud(nextProducts);
-      if (updatedProductsToSync.length > 0) {
-        updatedProductsToSync.forEach((prod) => {
-          saveProductToCloud(prod).catch((err) =>
-            console.warn(`[VANSHRA Cloud] Failed to sync stock for product ${prod.id}:`, err)
-          );
-        });
-      }
     }
 
-    // 2. Save order
+    // 2. Save order in 1 single Write
     const updatedOrder = normalizeOrder(newOrder);
     setOrders((prev) => {
       const nextOrders = [updatedOrder, ...prev.filter((o) => o.id !== updatedOrder.id)];
