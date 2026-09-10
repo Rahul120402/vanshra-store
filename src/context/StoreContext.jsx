@@ -967,12 +967,11 @@ export const StoreProvider = ({ children }) => {
     setProducts((prev) => {
       const next = [newProduct, ...prev];
       safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+      if (isFirebaseConfigured()) {
+        saveCatalogBundleToCloud(next);
+      }
       return next;
     });
-    if (isFirebaseConfigured()) {
-      saveProductToCloud(newProduct);
-      saveCatalogBundleToCloud([newProduct, ...products]);
-    }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;
   };
@@ -998,11 +997,6 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      if (updatedProdObj) {
-        saveProductToCloud(updatedProdObj).catch((err) =>
-          console.warn(`[VANSHRA Cloud] updateProduct failed for ${productId}:`, err)
-        );
-      }
       saveCatalogBundleToCloud(next);
     }
     showToast("Product updated successfully!", "success");
@@ -1015,7 +1009,6 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      deleteProductFromCloud(productId);
       saveCatalogBundleToCloud(next);
     }
     showToast("Product removed from catalog", "info");
@@ -1045,11 +1038,6 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      if (updatedProdObj) {
-        saveProductToCloud(updatedProdObj).catch((err) =>
-          console.warn(`[VANSHRA Cloud] updateSizeStock failed for ${productId}:`, err)
-        );
-      }
       saveCatalogBundleToCloud(next);
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
@@ -1580,7 +1568,6 @@ export const StoreProvider = ({ children }) => {
         safeSetStorage(STORAGE_KEYS.PRODUCTS, jsonData.products);
         if (isFirebaseConfigured()) {
           saveCatalogBundleToCloud(jsonData.products);
-          jsonData.products.forEach((p) => saveProductToCloud(p));
         }
       }
       if (jsonData.orders && Array.isArray(jsonData.orders)) {
@@ -1614,7 +1601,6 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
     if (isFirebaseConfigured()) {
       saveCatalogBundleToCloud(INITIAL_PRODUCTS);
-      INITIAL_PRODUCTS.forEach((p) => saveProductToCloud(p));
     }
     setOrders(INITIAL_ORDERS);
     safeSetStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
