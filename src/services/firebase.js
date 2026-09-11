@@ -149,20 +149,55 @@ export const fetchCloudProducts = async () => {
   const config = getFirebaseConfig();
 
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/products?pageSize=300${config.apiKey ? `&key=${config.apiKey}` : ""}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const allDocs = [];
+    let pageToken = null;
+    let pageCount = 0;
+    const MAX_PAGES = 20; // safety limit
 
-    const data = await res.json();
-    if (!data.documents) return [];
+    // Follow all pagination pages until all products are fetched
+    do {
+      const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/products?pageSize=50${pageToken ? `&pageToken=${pageToken}` : ""}${config.apiKey ? `&key=${config.apiKey}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) break;
 
-    return data.documents
+      const data = await res.json();
+      if (data.documents) {
+        allDocs.push(...data.documents);
+      }
+
+      pageToken = data.nextPageToken || null;
+      pageCount++;
+
+      if (pageToken) {
+        console.log(`[VANSHRA] Fetched page ${pageCount} (${allDocs.length} products so far), loading next page...`);
+      }
+    } while (pageToken && pageCount < MAX_PAGES);
+
+    console.log(`[VANSHRA] Total products fetched from Firestore: ${allDocs.length}`);
+
+    return allDocs
       .map((doc) => {
         const id = doc.name.split("/").pop();
-        return {
+        const product = {
           ...fromFirestoreFields(doc.fields),
           id
         };
+
+        // Strip base64 images on read — these are old products with embedded images
+        // that bloat the response and cause pagination. Only keep real URLs.
+        if (Array.isArray(product.images)) {
+          product.images = product.images
+            .filter(Boolean)
+            .filter((img) => !img.startsWith("data:"));
+
+          // Migrate old product to Cloudinary-clean storage silently in background
+          if (product.images.length === 0 && Array.isArray(fromFirestoreFields(doc.fields).images)) {
+            // Keep fallback placeholder so product doesn't vanish from UI
+            product.images = [];
+          }
+        }
+
+        return product;
       })
       .filter((p) => p && p.id)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
