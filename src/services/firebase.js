@@ -32,21 +32,26 @@ const toFirestoreFields = (obj) => {
     } else if (typeof value === "boolean") {
       fields[key] = { booleanValue: value };
     } else if (Array.isArray(value)) {
-      fields[key] = {
-        arrayValue: {
-          values: value.map((item) => {
-            if (item === null || item === undefined) return { nullValue: null };
-            if (typeof item === "object") {
-              return { mapValue: { fields: toFirestoreFields(item) } };
-            }
-            if (typeof item === "number") {
-              return Number.isInteger(item) ? { integerValue: String(item) } : { doubleValue: item };
-            }
-            if (typeof item === "boolean") return { booleanValue: item };
-            return { stringValue: String(item) };
-          })
-        }
-      };
+      if (value.length === 0) {
+        fields[key] = { arrayValue: {} };
+      } else {
+        fields[key] = {
+          arrayValue: {
+            values: value.map((item) => {
+              if (item === null || item === undefined) return { nullValue: null };
+              if (typeof item === "string") return { stringValue: String(item) };
+              if (typeof item === "number") {
+                return Number.isInteger(item) ? { integerValue: String(item) } : { doubleValue: item };
+              }
+              if (typeof item === "boolean") return { booleanValue: item };
+              if (typeof item === "object") {
+                return { mapValue: { fields: toFirestoreFields(item) } };
+              }
+              return { stringValue: String(item) };
+            })
+          }
+        };
+      }
     } else if (typeof value === "object") {
       fields[key] = {
         mapValue: {
@@ -73,6 +78,8 @@ const fromFirestoreFields = (fields) => {
         if ("mapValue" in v) return fromFirestoreFields(v.mapValue.fields);
         if ("stringValue" in v) return v.stringValue;
         if ("integerValue" in v) return parseInt(v.integerValue, 10);
+        if ("doubleValue" in v) return v.doubleValue;
+        if ("booleanValue" in v) return v.booleanValue;
         return v;
       });
     } else if ("mapValue" in value) {
@@ -138,6 +145,11 @@ export const saveCatalogBundleToCloud = async (products) => {
       headers: { "Content-Type": "application/json" },
       body
     });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[VANSHRA Cloud] Save catalog bundle failed (${res.status}):`, errText);
+    }
 
     if (res.ok) {
       updateStoreVersion({ productsUpdatedAt: nowIso });

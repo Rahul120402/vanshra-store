@@ -205,11 +205,12 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
       return;
     }
 
-    const cleanedImages = formData.images.filter((img) => img.trim() !== "");
-    if (cleanedImages.length === 0) {
-      showToast("Please provide at least one product photo", "warning");
-      return;
-    }
+    const cleanedImages = formData.images
+      .filter((img) => img && typeof img === "string" && img.trim() !== "")
+      .map(normalizeImageUrl)
+      .filter(Boolean);
+
+    const finalImages = cleanedImages.length > 0 ? cleanedImages : [FALLBACK_PRODUCT_IMAGE];
 
     const payload = {
       name: formData.name.trim(),
@@ -219,7 +220,7 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
       sku: formData.sku || `VAN-${Math.floor(1000 + Math.random() * 9000)}`,
       description: formData.description.trim() || "Elegant apparel piece designed with fine tailoring and premium silhouette.",
       fabricCare: formData.fabricCare.trim() || "Dry clean only.",
-      images: cleanedImages,
+      images: finalImages,
       colors: formData.colors,
       sizes: formData.sizes,
       isNew: formData.isNew,

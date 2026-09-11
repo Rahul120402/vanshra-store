@@ -963,6 +963,8 @@ export const StoreProvider = ({ children }) => {
     };
 
     removeDeletedProductId(newProduct.id);
+    safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
+    lastProductSyncTimestamp = Date.now();
 
     setProducts((prev) => {
       const next = [newProduct, ...prev];
@@ -994,6 +996,8 @@ export const StoreProvider = ({ children }) => {
       return prod;
     });
 
+    safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
+    lastProductSyncTimestamp = Date.now();
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
@@ -1007,8 +1011,11 @@ export const StoreProvider = ({ children }) => {
   };
 
   const deleteProduct = (productId) => {
+    const nowIso = new Date().toISOString();
     addDeletedProductId(productId);
     const next = products.filter((prod) => prod.id !== productId);
+    safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
+    lastProductSyncTimestamp = Date.now();
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
