@@ -183,18 +183,17 @@ export const fetchCloudProducts = async () => {
           id
         };
 
-        // Strip base64 images on read — these are old products with embedded images
-        // that bloat the response and cause pagination. Only keep real URLs.
+        // Only keep valid image URLs - strip base64, empty strings, and random text
         if (Array.isArray(product.images)) {
           product.images = product.images
             .filter(Boolean)
-            .filter((img) => !img.startsWith("data:"));
-
-          // Migrate old product to Cloudinary-clean storage silently in background
-          if (product.images.length === 0 && Array.isArray(fromFirestoreFields(doc.fields).images)) {
-            // Keep fallback placeholder so product doesn't vanish from UI
-            product.images = [];
-          }
+            .filter((img) => {
+              if (typeof img !== "string") return false;
+              if (img.startsWith("data:")) return false; // base64 - too large
+              if (img.startsWith("http://") || img.startsWith("https://")) return true; // valid URL
+              if (img.startsWith("/")) return true; // relative URL
+              return false; // everything else (random text, product names etc.) - reject
+            });
         }
 
         return product;
