@@ -108,22 +108,21 @@ export const normalizeOrder = (order) => {
     if (subtotal === 0) subtotal = calcSubtotal;
     if (total === 0) total = subtotal + shippingFee;
   } else if (total === 0) {
-    // If an order has 0 items and 0 total, repair it with a catalog product
-    const fallbackProd = INITIAL_PRODUCTS[0];
+    // If an order has 0 items and 0 total, repair it with a generic placeholder
     items = [
       {
-        productId: fallbackProd.id,
-        name: fallbackProd.name,
-        image: fallbackProd.images[0],
-        size: "M",
-        color: fallbackProd.colors[0]?.name || "Standard",
-        price: fallbackProd.price,
+        productId: "custom-item",
+        name: "Boutique Apparel Item",
+        image: FALLBACK_PRODUCT_IMAGE,
+        size: "Standard",
+        color: "Standard",
+        price: 0,
         quantity: 1
       }
     ];
-    subtotal = fallbackProd.price;
+    subtotal = 0;
     shippingFee = 0;
-    total = fallbackProd.price;
+    total = 0;
   }
 
   const custName = order.customer?.fullName && order.customer.fullName !== "Valued Customer" && order.customer.fullName !== "Customer"
@@ -188,10 +187,9 @@ export const StoreProvider = ({ children }) => {
           return parsed;
         }
       }
-      const deletedIds = getDeletedProductIds();
-      return INITIAL_PRODUCTS.filter((p) => p && !deletedIds.includes(p.id));
+      return [];
     } catch {
-      return INITIAL_PRODUCTS;
+      return [];
     }
   });
 
