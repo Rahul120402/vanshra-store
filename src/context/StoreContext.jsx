@@ -965,8 +965,8 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      await saveCatalogBundleToCloud(next);
       await saveProductToCloud(newProduct);
+      await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;
@@ -994,11 +994,9 @@ export const StoreProvider = ({ children }) => {
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
-    if (isFirebaseConfigured()) {
-      await saveCatalogBundleToCloud(next);
-      if (updatedProdObj) {
-        await saveProductToCloud(updatedProdObj);
-      }
+    if (isFirebaseConfigured() && updatedProdObj) {
+      await saveProductToCloud(updatedProdObj);
+      await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product updated successfully!", "success");
   };
@@ -1013,13 +1011,13 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      await saveCatalogBundleToCloud(next);
       await deleteProductFromCloud(productId);
+      await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product removed from catalog", "info");
   };
 
-  const updateSizeStock = (productId, sizeKey, newCount) => {
+  const updateSizeStock = async (productId, sizeKey, newCount) => {
     const count = Math.max(0, parseInt(newCount, 10) || 0);
     const nowIso = new Date().toISOString();
     let updatedProdObj = null;
@@ -1039,14 +1037,14 @@ export const StoreProvider = ({ children }) => {
       return prod;
     });
 
+    safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
+    lastProductSyncTimestamp = Date.now();
     setProducts(next);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
-    if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(next);
-      if (updatedProdObj) {
-        saveProductToCloud(updatedProdObj);
-      }
+    if (isFirebaseConfigured() && updatedProdObj) {
+      await saveProductToCloud(updatedProdObj);
+      await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
   };
