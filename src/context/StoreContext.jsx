@@ -778,13 +778,20 @@ export const StoreProvider = ({ children }) => {
     if (!isFirebaseConfigured() || !isAdminAuthenticated || isOrdersSyncInProgress) return;
 
     const now = Date.now();
-    if (!force && (now - lastOrdersSyncTimestamp < 120000)) return;
+    if (!force && (now - lastOrdersSyncTimestamp < 60000)) return;
 
     try {
       isOrdersSyncInProgress = true;
       setIsSyncingOrders(true);
 
-      const localOrdersVersion = localStorage.getItem(STORAGE_KEYS.ORDERS_VERSION);
+      let localOrdersVersion = null;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.ORDERS_VERSION);
+        localOrdersVersion = raw ? JSON.parse(raw) : null;
+      } catch {
+        localOrdersVersion = null;
+      }
+
       const versionMeta = await fetchStoreVersion();
 
       // Check if orders have been modified since last sync
@@ -792,7 +799,7 @@ export const StoreProvider = ({ children }) => {
       try {
         const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
         const parsed = saved ? JSON.parse(saved) : [];
-        hasLocalOrders = Array.isArray(parsed) && parsed.length > 0;
+        hasLocalOrders = Array.isArray(parsed);
       } catch {
         hasLocalOrders = false;
       }
@@ -807,7 +814,7 @@ export const StoreProvider = ({ children }) => {
         }
       }
 
-      const cloudOrders = await fetchCloudOrders(30);
+      const cloudOrders = await fetchCloudOrders(50);
 
       if (cloudOrders && Array.isArray(cloudOrders)) {
         const normalizedCloud = cloudOrders
@@ -816,29 +823,13 @@ export const StoreProvider = ({ children }) => {
           .filter(Boolean)
           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-        setOrders((prev) => {
-          // Merge with any existing local orders to preserve deep history
-          const existingMap = new Map();
-          normalizedCloud.forEach((o) => existingMap.set(o.id, o));
-          prev.forEach((o) => {
-            if (!existingMap.has(o.id)) {
-              existingMap.set(o.id, o);
-            }
-          });
-          const merged = Array.from(existingMap.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
-          safeSetStorage(STORAGE_KEYS.ORDERS, merged);
-          return merged;
-        });
+        // Cloud is single source of truth: accurately reflects additions and deletions across devices
+        setOrders(normalizedCloud);
+        safeSetStorage(STORAGE_KEYS.ORDERS, normalizedCloud);
 
         lastOrdersSyncTimestamp = now;
-        if (versionMeta && versionMeta.ordersUpdatedAt) {
-          safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, versionMeta.ordersUpdatedAt);
-        } else {
-          const nowIso = new Date().toISOString();
-          safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, nowIso);
-        }
+        const latestVer = (versionMeta && versionMeta.ordersUpdatedAt) || new Date().toISOString();
+        safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, latestVer);
 
         setSelectedOrderForDetail((curr) => {
           if (!curr) return null;
@@ -1443,10 +1434,13 @@ export const StoreProvider = ({ children }) => {
 
   const deleteOrder = (orderId) => {
     const next = orders.filter((o) => o.id !== orderId);
+    const nowIso = new Date().toISOString();
     setOrders(next);
     safeSetStorage(STORAGE_KEYS.ORDERS, next);
+    safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, nowIso);
     if (isFirebaseConfigured()) {
       deleteOrderFromCloud(orderId);
+      updateStoreVersion({ ordersUpdatedAt: nowIso });
     }
     if (selectedOrderForDetail?.id === orderId) {
       setSelectedOrderForDetail(null);
@@ -1455,6 +1449,7 @@ export const StoreProvider = ({ children }) => {
   };
 
   const clearAllOrders = () => {
+    const nowIso = new Date().toISOString();
     orders.forEach((o) => {
       if (isFirebaseConfigured() && o.id) {
         deleteOrderFromCloud(o.id);
@@ -1462,6 +1457,10 @@ export const StoreProvider = ({ children }) => {
     });
     setOrders([]);
     safeSetStorage(STORAGE_KEYS.ORDERS, []);
+    safeSetStorage(STORAGE_KEYS.ORDERS_VERSION, nowIso);
+    if (isFirebaseConfigured()) {
+      updateStoreVersion({ ordersUpdatedAt: nowIso });
+    }
     if (selectedOrderForDetail) {
       setSelectedOrderForDetail(null);
     }
