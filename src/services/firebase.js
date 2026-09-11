@@ -95,27 +95,13 @@ const fromFirestoreFields = (fields) => {
 
 // Fetches active catalog from Firestore products collection with bundle fallback
 export const fetchCloudCatalog = async () => {
-  if (!isFirebaseConfigured()) return null;
+  if (!isFirebaseConfigured()) return [];
 
   try {
-    // 1. Fetch live products from the cloud products collection (supports unlimited items)
+    // Fetch live products directly from the cloud products collection
     const cloudProducts = await fetchCloudProducts();
-    if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+    if (cloudProducts && Array.isArray(cloudProducts)) {
       return cloudProducts;
-    }
-
-    // 2. Fallback to catalog_bundle
-    const config = getFirebaseConfig();
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.fields) {
-        const parsed = fromFirestoreFields(data.fields);
-        if (Array.isArray(parsed.products) && parsed.products.length > 0) {
-          return parsed.products;
-        }
-      }
     }
     return [];
   } catch (err) {
@@ -124,7 +110,7 @@ export const fetchCloudCatalog = async () => {
   }
 };
 
-// Saves the entire active catalog array in 1 single document write in Firestore
+// Saves the entire active catalog array in 1 single document write in Firestore (Legacy backup)
 export const saveCatalogBundleToCloud = async (products) => {
   if (!isFirebaseConfigured() || !Array.isArray(products)) return false;
   const config = getFirebaseConfig();
@@ -148,11 +134,6 @@ export const saveCatalogBundleToCloud = async (products) => {
       body
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn(`[VANSHRA Cloud] Save catalog bundle failed (${res.status}):`, errText);
-    }
-
     if (res.ok) {
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
@@ -175,13 +156,16 @@ export const fetchCloudProducts = async () => {
     const data = await res.json();
     if (!data.documents) return [];
 
-    return data.documents.map((doc) => {
-      const id = doc.name.split("/").pop();
-      return {
-        ...fromFirestoreFields(doc.fields),
-        id
-      };
-    });
+    return data.documents
+      .map((doc) => {
+        const id = doc.name.split("/").pop();
+        return {
+          ...fromFirestoreFields(doc.fields),
+          id
+        };
+      })
+      .filter((p) => p && p.id)
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   } catch (err) {
     console.warn("[VANSHRA Cloud] Failed to fetch products:", err);
     return null;

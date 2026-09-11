@@ -6,7 +6,6 @@ import confetti from "canvas-confetti";
 import { 
   isFirebaseConfigured, 
   fetchCloudCatalog,
-  saveCatalogBundleToCloud,
   fetchCloudProducts, 
   saveProductToCloud, 
   deleteProductFromCloud,
@@ -45,44 +44,18 @@ const STORAGE_KEYS = {
   CART: "vanshra_clothing_cart_v2",
   WISHLIST: "vanshra_clothing_wishlist_v2",
   COUPONS: "vanshra_clothing_coupons_v2",
-  DELETED_PRODUCT_IDS: "vanshra_clothing_deleted_prod_ids_v2",
   LAST_PRODUCT_SYNC: "vanshra_clothing_last_sync_v2",
   STORE_VERSION: "vanshra_clothing_version_v2",
   ORDERS_VERSION: "vanshra_clothing_orders_ver_v2"
 };
 
-const getDeletedProductIds = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEYS.DELETED_PRODUCT_IDS);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-};
-
-const addDeletedProductId = (id) => {
-  if (!id) return;
-  try {
-    const current = getDeletedProductIds();
-    if (!current.includes(id)) {
-      const updated = [...current, id];
-      localStorage.setItem(STORAGE_KEYS.DELETED_PRODUCT_IDS, JSON.stringify(updated));
-    }
-  } catch {
-    // ignore
-  }
-};
-
-const removeDeletedProductId = (id) => {
-  if (!id) return;
-  try {
-    const current = getDeletedProductIds();
-    const updated = current.filter((x) => x !== id);
-    localStorage.setItem(STORAGE_KEYS.DELETED_PRODUCT_IDS, JSON.stringify(updated));
-  } catch {
-    // ignore
-  }
-};
+// Clean up legacy deleted IDs blacklist from local storage
+try {
+  localStorage.removeItem("vanshra_clothing_deleted_prod_ids_v2");
+  localStorage.removeItem("vanshra_clothing_deleted_ids_v2");
+} catch {
+  // ignore
+}
 
 export const normalizeOrder = (order) => {
   if (!order || typeof order !== "object") return null;
@@ -724,53 +697,27 @@ export const StoreProvider = ({ children }) => {
   // Optimized Cloud Synchronization & Caching
   // ==========================================
 
-  // 1. Products & Settings Sync (Cache-First with Version Check - Guaranteed Run-Once)
+  // 1. Products & Settings Sync (Direct from Firestore Collection)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
 
     const now = Date.now();
-    let hasLocalProducts = false;
-    try {
-      const savedProds = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      const parsed = savedProds ? JSON.parse(savedProds) : [];
-      hasLocalProducts = Array.isArray(parsed) && parsed.length > 0;
-    } catch {
-      hasLocalProducts = false;
-    }
-
-    const localVersion = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
-
     try {
       isProductsSyncInProgress = true;
       hasInitialProductsSyncRun = true;
       setIsSyncingProducts(true);
 
-      // Lightweight Single-Document Version Check (Cost: Only 1 Firestore read!)
-      const versionMeta = await fetchStoreVersion();
-
-      // If we have local products and not forcing, check if version matches
-      if (!force && hasLocalProducts && versionMeta && versionMeta.productsUpdatedAt) {
-        if (localVersion && versionMeta.productsUpdatedAt === localVersion) {
-          // Version has NOT changed! Reuse local cache with 0 product collection reads!
-          safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
-          setIsSyncingProducts(false);
-          isProductsSyncInProgress = false;
-          return;
-        }
-      }
-
-      // Read updated catalog bundle (Cost: ONLY 1 Read for ALL products!) & settings in parallel
-      const [cloudProducts, cloudSettings] = await Promise.all([
+      // Read live products, settings, and store version in parallel directly from Firestore
+      const [cloudProducts, cloudSettings, versionMeta] = await Promise.all([
         fetchCloudCatalog(),
-        fetchCloudSettings()
+        fetchCloudSettings(),
+        fetchStoreVersion()
       ]);
 
-      if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
-        const deletedIds = getDeletedProductIds();
-        const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
-
-        setProducts(filteredCloud);
-        safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
+      if (cloudProducts && Array.isArray(cloudProducts)) {
+        const validCloud = cloudProducts.filter((p) => p && p.id);
+        setProducts(validCloud);
+        safeSetStorage(STORAGE_KEYS.PRODUCTS, validCloud);
       }
 
       if (cloudSettings && Object.keys(cloudSettings).length > 0) {
@@ -788,7 +735,6 @@ export const StoreProvider = ({ children }) => {
         safeSetStorage(STORAGE_KEYS.STORE_VERSION, versionMeta.productsUpdatedAt);
       } else {
         const newIso = new Date().toISOString();
-        await updateStoreVersion({ productsUpdatedAt: newIso });
         safeSetStorage(STORAGE_KEYS.STORE_VERSION, newIso);
       }
 
@@ -956,7 +902,6 @@ export const StoreProvider = ({ children }) => {
       updatedAt: nowIso
     };
 
-    removeDeletedProductId(newProduct.id);
     safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
     lastProductSyncTimestamp = Date.now();
 
@@ -1003,7 +948,6 @@ export const StoreProvider = ({ children }) => {
 
   const deleteProduct = async (productId) => {
     const nowIso = new Date().toISOString();
-    addDeletedProductId(productId);
     const next = products.filter((prod) => prod.id !== productId);
     safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
     lastProductSyncTimestamp = Date.now();
@@ -1376,9 +1320,9 @@ export const StoreProvider = ({ children }) => {
     setProducts(nextProducts);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, nextProducts);
 
-    // Persist decremented inventory to Cloud Catalog in exactly 1 single Write
-    if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(nextProducts);
+    // Persist decremented inventory to Cloud
+    if (isFirebaseConfigured() && updatedProductsToSync.length > 0) {
+      updatedProductsToSync.forEach((p) => saveProductToCloud(p));
     }
 
     // 2. Save order in 1 single Write
@@ -1573,7 +1517,7 @@ export const StoreProvider = ({ children }) => {
         setProducts(jsonData.products);
         safeSetStorage(STORAGE_KEYS.PRODUCTS, jsonData.products);
         if (isFirebaseConfigured()) {
-          saveCatalogBundleToCloud(jsonData.products);
+          jsonData.products.forEach((p) => saveProductToCloud(p));
         }
       }
       if (jsonData.orders && Array.isArray(jsonData.orders)) {
@@ -1600,20 +1544,14 @@ export const StoreProvider = ({ children }) => {
   };
 
   const resetToDemoData = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEYS.DELETED_PRODUCT_IDS);
-    } catch {}
     setProducts(INITIAL_PRODUCTS);
     safeSetStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
-    if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(INITIAL_PRODUCTS);
-    }
     setOrders(INITIAL_ORDERS);
     safeSetStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
     setSettings(INITIAL_SETTINGS);
     safeSetStorage(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
     setCart([]);
-    showToast("Reset store to official demo catalog & sample orders!", "info");
+    showToast("Reset store catalog & sample orders!", "info");
   };
 
   // Computed metrics for Admin Dashboard
