@@ -93,32 +93,34 @@ const fromFirestoreFields = (fields) => {
 // 1. Live Products & 1-Read Catalog Bundle Synchronization
 // ==========================================
 
-// Fetches the entire active catalog in exactly 1 single Firestore document read
+// Fetches active catalog from Firestore products collection with bundle fallback
 export const fetchCloudCatalog = async () => {
   if (!isFirebaseConfigured()) return null;
-  const config = getFirebaseConfig();
 
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      // If catalog_bundle does not exist yet (bootstrap phase), fallback to collection fetch
-      const legacyProducts = await fetchCloudProducts();
-      if (legacyProducts && Array.isArray(legacyProducts) && legacyProducts.length > 0) {
-        // Automatically save initial catalog bundle for future 1-read instant loads
-        saveCatalogBundleToCloud(legacyProducts);
-        return legacyProducts;
-      }
-      return null;
+    // 1. Fetch live products from the cloud products collection (supports unlimited items)
+    const cloudProducts = await fetchCloudProducts();
+    if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+      return cloudProducts;
     }
 
-    const data = await res.json();
-    if (!data.fields) return null;
-    const parsed = fromFirestoreFields(data.fields);
-    return Array.isArray(parsed.products) ? parsed.products : [];
+    // 2. Fallback to catalog_bundle
+    const config = getFirebaseConfig();
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.fields) {
+        const parsed = fromFirestoreFields(data.fields);
+        if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+          return parsed.products;
+        }
+      }
+    }
+    return [];
   } catch (err) {
-    console.warn("[VANSHRA Cloud] Failed to fetch catalog bundle:", err);
-    return null;
+    console.warn("[VANSHRA Cloud] Failed to fetch catalog:", err);
+    return [];
   }
 };
 
