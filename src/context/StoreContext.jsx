@@ -910,8 +910,18 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      await saveProductToCloud(newProduct);
-      await updateStoreVersion({ productsUpdatedAt: nowIso });
+      const saved = await saveProductToCloud(newProduct);
+      if (saved) {
+        await updateStoreVersion({ productsUpdatedAt: nowIso });
+        console.log(`[VANSHRA] Product "${newProduct.name}" saved to Firestore ✓`);
+      } else {
+        console.error(`[VANSHRA] FIRESTORE SAVE FAILED for product "${newProduct.name}"`);
+        showToast(
+          `⚠️ Product added locally but cloud save failed! Check browser console (F12) for error details.`,
+          "error",
+          7000
+        );
+      }
     }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;

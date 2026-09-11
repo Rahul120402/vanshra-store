@@ -199,12 +199,17 @@ export const saveProductToCloud = async (product) => {
       updatedAt: product.updatedAt || new Date().toISOString()
     };
 
+    // Estimate body size before sending to catch limit issues early
+    const body = JSON.stringify({ fields: toFirestoreFields(prodToSave) });
+    const bodySizeKB = Math.round(body.length / 1024);
+    console.log(`[VANSHRA] Saving product "${product.name}" to Firestore... Body size: ${bodySizeKB}KB, Images: ${sanitizedImages.length}`);
+
+    if (bodySizeKB > 900) {
+      console.error(`[VANSHRA] Product body too large (${bodySizeKB}KB) - will exceed Firestore 1MB limit!`);
+    }
+
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/products/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
     
-    const body = JSON.stringify({
-      fields: toFirestoreFields(prodToSave)
-    });
-
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -213,16 +218,15 @@ export const saveProductToCloud = async (product) => {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.warn(`[VANSHRA Cloud] Save product "${product.name || docId}" failed (${res.status}):`, errText);
+      console.error(`[VANSHRA Cloud] SAVE FAILED for "${product.name || docId}" (HTTP ${res.status}):`, errText);
+      return false;
     }
 
-    if (res.ok) {
-      updateStoreVersion({ productsUpdatedAt: new Date().toISOString() });
-    }
-
-    return res.ok;
+    console.log(`[VANSHRA Cloud] ✓ Product "${product.name || docId}" saved successfully (${bodySizeKB}KB)`);
+    updateStoreVersion({ productsUpdatedAt: new Date().toISOString() });
+    return true;
   } catch (err) {
-    console.warn("[VANSHRA Cloud] Failed to save product:", err);
+    console.error("[VANSHRA Cloud] Exception saving product:", err);
     return false;
   }
 };
