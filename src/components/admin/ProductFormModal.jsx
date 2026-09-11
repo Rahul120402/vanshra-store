@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { STANDARD_SIZES } from "../../data/initialData";
 import { compressImage, normalizeImageUrl, FALLBACK_PRODUCT_IMAGE } from "../../utils/formatters";
+import { uploadProductPhotoToCloud } from "../../services/imageUpload";
 import { 
   X, 
   Plus, 
@@ -14,7 +15,8 @@ import {
   Layers,
   DollarSign,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 
 export const ProductFormModal = ({ product, isOpen, onClose }) => {
@@ -48,6 +50,7 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
 
   const [newCatInput, setNewCatInput] = useState("");
   const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -118,28 +121,34 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    showToast("Optimizing photo for cloud storage...", "info", 2000);
-    const compressedImages = [];
+    setIsUploadingImage(true);
+    showToast("Uploading photo to cloud storage...", "info", 3000);
+    const uploadedUrls = [];
+
     for (const file of files) {
       try {
-        const compressed = await compressImage(file);
-        if (compressed) {
-          compressedImages.push(compressed);
+        const cloudUrl = await uploadProductPhotoToCloud(file);
+        if (cloudUrl) {
+          uploadedUrls.push(cloudUrl);
         }
       } catch (err) {
-        console.warn("Compression fallback:", err);
+        console.warn("Cloud image upload failed:", err);
       }
     }
 
-    if (compressedImages.length > 0) {
+    setIsUploadingImage(false);
+
+    if (uploadedUrls.length > 0) {
       setFormData((prev) => {
         const existing = prev.images.filter((img) => img.trim() !== "");
         return {
           ...prev,
-          images: existing.length === 0 ? compressedImages : [...existing, ...compressedImages]
+          images: existing.length === 0 ? uploadedUrls : [...existing, ...uploadedUrls]
         };
       });
-      showToast("Photo uploaded & compressed successfully!", "success", 2500);
+      showToast("Photo uploaded to cloud successfully!", "success", 2500);
+    } else {
+      showToast("Could not upload photo. Please check internet connection.", "warning", 3000);
     }
     e.target.value = "";
   };
@@ -470,10 +479,28 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
                 <ImageIcon size={16} />
                 <span>Product Photos (URLs or Upload)</span>
               </span>
-              <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer", padding: "4px 10px", fontSize: "0.75rem" }}>
-                <Upload size={13} />
-                <span>Upload From Device</span>
-                <input type="file" accept="image/*" multiple onChange={handleFileUpload} style={{ display: "none" }} />
+              <label 
+                className="btn btn-secondary btn-sm" 
+                style={{ 
+                  cursor: isUploadingImage ? "not-allowed" : "pointer", 
+                  padding: "6px 12px", 
+                  fontSize: "0.78rem",
+                  opacity: isUploadingImage ? 0.7 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                {isUploadingImage ? <Loader2 size={13} className="spin-animation" /> : <Upload size={13} />}
+                <span>{isUploadingImage ? "Uploading to Cloud..." : "Upload From Device"}</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  disabled={isUploadingImage}
+                  onChange={handleFileUpload} 
+                  style={{ display: "none" }} 
+                />
               </label>
             </div>
 

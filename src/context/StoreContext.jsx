@@ -969,6 +969,7 @@ export const StoreProvider = ({ children }) => {
       safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
       if (isFirebaseConfigured()) {
         saveCatalogBundleToCloud(next);
+        saveProductToCloud(newProduct);
       }
       return next;
     });
@@ -998,6 +999,9 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       saveCatalogBundleToCloud(next);
+      if (updatedProdObj) {
+        saveProductToCloud(updatedProdObj);
+      }
     }
     showToast("Product updated successfully!", "success");
   };
@@ -1010,6 +1014,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       saveCatalogBundleToCloud(next);
+      deleteProductFromCloud(productId);
     }
     showToast("Product removed from catalog", "info");
   };
@@ -1039,6 +1044,9 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       saveCatalogBundleToCloud(next);
+      if (updatedProdObj) {
+        saveProductToCloud(updatedProdObj);
+      }
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
   };
