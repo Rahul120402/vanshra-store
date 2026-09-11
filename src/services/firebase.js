@@ -511,7 +511,9 @@ export const updateStoreVersion = async (updates = {}) => {
       ...updates
     };
 
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/version_meta?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const keys = Object.keys(payload);
+    const maskParams = keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/version_meta?${maskParams}${config.apiKey ? `&key=${config.apiKey}` : ""}`;
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -697,7 +697,7 @@ export const StoreProvider = ({ children }) => {
   // Optimized Cloud Synchronization & Caching
   // ==========================================
 
-  // 1. Products & Settings Sync (Direct from Firestore Collection)
+  // 1. Products & Settings Sync (Optimized with Version Cache - Consumes 1 Read when unchanged)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
 
@@ -707,11 +707,42 @@ export const StoreProvider = ({ children }) => {
       hasInitialProductsSyncRun = true;
       setIsSyncingProducts(true);
 
-      // Read live products, settings, and store version in parallel directly from Firestore
-      const [cloudProducts, cloudSettings, versionMeta] = await Promise.all([
+      // Check local cache
+      let localVersion = null;
+      try {
+        const rawVer = localStorage.getItem(STORAGE_KEYS.STORE_VERSION);
+        localVersion = rawVer ? JSON.parse(rawVer) : null;
+      } catch {
+        localVersion = null;
+      }
+
+      let hasLocalProducts = false;
+      try {
+        const rawProds = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+        const parsed = rawProds ? JSON.parse(rawProds) : null;
+        hasLocalProducts = Array.isArray(parsed) && parsed.length > 0;
+      } catch {
+        hasLocalProducts = false;
+      }
+
+      // Check lightweight version document FIRST (Consumes ONLY 1 Firestore read!)
+      const versionMeta = await fetchStoreVersion();
+
+      // If version matches and we already have products in cache, skip heavy collection read!
+      if (!force && hasLocalProducts && localVersion && versionMeta?.productsUpdatedAt) {
+        if (versionMeta.productsUpdatedAt === localVersion) {
+          console.log(`[VANSHRA Cache] ✓ Catalog is up-to-date (v: ${localVersion}). Consumed only 1 Firestore read.`);
+          lastProductSyncTimestamp = now;
+          safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
+          return;
+        }
+      }
+
+      // Catalog has changed or initial visit: Fetch full catalog & settings from Firestore
+      console.log(`[VANSHRA Cloud] Fetching live products (Cloud v: ${versionMeta?.productsUpdatedAt || "none"}, Local v: ${localVersion || "none"})...`);
+      const [cloudProducts, cloudSettings] = await Promise.all([
         fetchCloudCatalog(),
-        fetchCloudSettings(),
-        fetchStoreVersion()
+        fetchCloudSettings()
       ]);
 
       if (cloudProducts && Array.isArray(cloudProducts)) {
@@ -731,13 +762,8 @@ export const StoreProvider = ({ children }) => {
 
       // Update version and sync markers
       lastProductSyncTimestamp = now;
-      if (versionMeta && versionMeta.productsUpdatedAt) {
-        safeSetStorage(STORAGE_KEYS.STORE_VERSION, versionMeta.productsUpdatedAt);
-      } else {
-        const newIso = new Date().toISOString();
-        safeSetStorage(STORAGE_KEYS.STORE_VERSION, newIso);
-      }
-
+      const latestVer = (versionMeta && versionMeta.productsUpdatedAt) || new Date().toISOString();
+      safeSetStorage(STORAGE_KEYS.STORE_VERSION, latestVer);
       safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
     } catch (err) {
       console.warn("[VANSHRA Cloud Products Sync]", err);
