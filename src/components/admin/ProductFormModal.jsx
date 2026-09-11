@@ -121,8 +121,19 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
+    const cloudinaryConfigured = Boolean(
+      import.meta.env.VITE_CLOUDINARY_CLOUD_NAME &&
+      import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+    );
+
     setIsUploadingImage(true);
-    showToast("Uploading photo to cloud storage...", "info", 3000);
+    showToast(
+      cloudinaryConfigured
+        ? "Uploading photo to Cloudinary CDN..."
+        : "Processing photo...",
+      "info",
+      3000
+    );
     const uploadedUrls = [];
 
     for (const file of files) {
@@ -132,7 +143,8 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
           uploadedUrls.push(cloudUrl);
         }
       } catch (err) {
-        console.warn("Cloud image upload failed:", err);
+        console.warn("Image upload failed:", err);
+        showToast("Photo upload failed. Try again.", "error", 3000);
       }
     }
 
@@ -140,15 +152,27 @@ export const ProductFormModal = ({ product, isOpen, onClose }) => {
 
     if (uploadedUrls.length > 0) {
       setFormData((prev) => {
-        const existing = prev.images.filter((img) => img.trim() !== "");
+        const existing = prev.images.filter((img) => img && img.trim() !== "");
         return {
           ...prev,
           images: existing.length === 0 ? uploadedUrls : [...existing, ...uploadedUrls]
         };
       });
-      showToast("Photo uploaded to cloud successfully!", "success", 2500);
+      showToast(
+        cloudinaryConfigured
+          ? `✓ ${uploadedUrls.length} photo(s) uploaded to cloud!`
+          : `✓ ${uploadedUrls.length} photo(s) ready!`,
+        "success",
+        2500
+      );
     } else {
-      showToast("Could not upload photo. Please check internet connection.", "warning", 3000);
+      showToast(
+        cloudinaryConfigured
+          ? "Upload failed. Check Cloudinary credentials in .env"
+          : "Could not process photo. Try a different file.",
+        "warning",
+        4000
+      );
     }
     e.target.value = "";
   };

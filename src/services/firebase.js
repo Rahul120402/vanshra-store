@@ -178,14 +178,31 @@ export const saveProductToCloud = async (product) => {
 
   try {
     const docId = String(product.id);
-    const prodWithUpdated = {
+
+    // Strip embedded base64 images before saving to Firestore.
+    // Cloudinary uploads store an HTTPS URL (tiny), but legacy base64 data-URLs
+    // can be 200-500KB each, blowing past Firestore's 1MB per-document limit.
+    const sanitizedImages = Array.isArray(product.images)
+      ? product.images
+          .filter(Boolean)
+          .map((img) =>
+            typeof img === "string" && img.startsWith("data:")
+              ? "" // drop embedded base64 - must use Cloudinary URL instead
+              : img
+          )
+          .filter(Boolean)
+      : [];
+
+    const prodToSave = {
       ...product,
+      images: sanitizedImages.length > 0 ? sanitizedImages : [],
       updatedAt: product.updatedAt || new Date().toISOString()
     };
+
     const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/products/${docId}?${config.apiKey ? `key=${config.apiKey}` : ""}`;
     
     const body = JSON.stringify({
-      fields: toFirestoreFields(prodWithUpdated)
+      fields: toFirestoreFields(prodToSave)
     });
 
     const res = await fetch(url, {
