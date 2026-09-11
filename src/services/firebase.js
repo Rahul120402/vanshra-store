@@ -152,7 +152,7 @@ export const saveCatalogBundleToCloud = async (products) => {
     }
 
     if (res.ok) {
-      updateStoreVersion({ productsUpdatedAt: nowIso });
+      await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     return res.ok;
   } catch (err) {

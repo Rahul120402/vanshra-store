@@ -729,7 +729,6 @@ export const StoreProvider = ({ children }) => {
   // 1. Products & Settings Sync (Cache-First with Version Check - Guaranteed Run-Once)
   const syncProductsWithCloud = useCallback(async (force = false) => {
     if (!isFirebaseConfigured() || isProductsSyncInProgress) return;
-    if (!force && hasInitialProductsSyncRun && (Date.now() - lastProductSyncTimestamp < 180000)) return;
 
     const now = Date.now();
     let hasLocalProducts = false;
@@ -772,22 +771,8 @@ export const StoreProvider = ({ children }) => {
         const deletedIds = getDeletedProductIds();
         const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
 
-        setProducts((prev) => {
-          const cloudMap = new Map();
-          filteredCloud.forEach((p) => cloudMap.set(p.id, p));
-
-          // Merge: Keep all cloud products, and keep any local products not yet in cloud unless deleted
-          const merged = [...filteredCloud];
-          (prev || []).forEach((localP) => {
-            if (localP && localP.id && !cloudMap.has(localP.id) && !deletedIds.includes(localP.id)) {
-              merged.unshift(localP);
-            }
-          });
-
-          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
-          safeSetStorage(STORAGE_KEYS.PRODUCTS, merged);
-          return merged;
-        });
+        setProducts(filteredCloud);
+        safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
       }
 
       if (cloudSettings && Object.keys(cloudSettings).length > 0) {
@@ -801,12 +786,12 @@ export const StoreProvider = ({ children }) => {
 
       // Update version and sync markers
       lastProductSyncTimestamp = now;
-      if (!versionMeta || !versionMeta.productsUpdatedAt) {
-        const newIso = new Date().toISOString();
-        updateStoreVersion({ productsUpdatedAt: newIso });
-        safeSetStorage(STORAGE_KEYS.STORE_VERSION, newIso);
-      } else {
+      if (versionMeta && versionMeta.productsUpdatedAt) {
         safeSetStorage(STORAGE_KEYS.STORE_VERSION, versionMeta.productsUpdatedAt);
+      } else {
+        const newIso = new Date().toISOString();
+        await updateStoreVersion({ productsUpdatedAt: newIso });
+        safeSetStorage(STORAGE_KEYS.STORE_VERSION, newIso);
       }
 
       safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
@@ -959,7 +944,7 @@ export const StoreProvider = ({ children }) => {
 
   // ==================== PRODUCT ACTIONS ====================
 
-  const addProduct = (productData) => {
+  const addProduct = async (productData) => {
     const nowIso = new Date().toISOString();
     const cleanedImages = Array.isArray(productData.images)
       ? productData.images.map(normalizeImageUrl).filter(Boolean)
@@ -982,14 +967,14 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(next);
-      saveProductToCloud(newProduct);
+      await saveCatalogBundleToCloud(next);
+      await saveProductToCloud(newProduct);
     }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;
   };
 
-  const updateProduct = (productId, updatedFields) => {
+  const updateProduct = async (productId, updatedFields) => {
     const nowIso = new Date().toISOString();
     let fields = { ...updatedFields, updatedAt: nowIso };
     if (Array.isArray(fields.images)) {
@@ -1012,15 +997,15 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(next);
+      await saveCatalogBundleToCloud(next);
       if (updatedProdObj) {
-        saveProductToCloud(updatedProdObj);
+        await saveProductToCloud(updatedProdObj);
       }
     }
     showToast("Product updated successfully!", "success");
   };
 
-  const deleteProduct = (productId) => {
+  const deleteProduct = async (productId) => {
     const nowIso = new Date().toISOString();
     addDeletedProductId(productId);
     const next = products.filter((prod) => prod.id !== productId);
@@ -1030,8 +1015,8 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
 
     if (isFirebaseConfigured()) {
-      saveCatalogBundleToCloud(next);
-      deleteProductFromCloud(productId);
+      await saveCatalogBundleToCloud(next);
+      await deleteProductFromCloud(productId);
     }
     showToast("Product removed from catalog", "info");
   };
