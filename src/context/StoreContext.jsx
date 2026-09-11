@@ -773,9 +773,20 @@ export const StoreProvider = ({ children }) => {
         const filteredCloud = cloudProducts.filter((p) => p && p.id && !deletedIds.includes(p.id));
 
         setProducts((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(filteredCloud)) return prev;
-          safeSetStorage(STORAGE_KEYS.PRODUCTS, filteredCloud);
-          return filteredCloud;
+          const cloudMap = new Map();
+          filteredCloud.forEach((p) => cloudMap.set(p.id, p));
+
+          // Merge: Keep all cloud products, and keep any local products not yet in cloud unless deleted
+          const merged = [...filteredCloud];
+          (prev || []).forEach((localP) => {
+            if (localP && localP.id && !cloudMap.has(localP.id) && !deletedIds.includes(localP.id)) {
+              merged.unshift(localP);
+            }
+          });
+
+          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+          safeSetStorage(STORAGE_KEYS.PRODUCTS, merged);
+          return merged;
         });
       }
 
@@ -966,15 +977,14 @@ export const StoreProvider = ({ children }) => {
     safeSetStorage(STORAGE_KEYS.STORE_VERSION, nowIso);
     lastProductSyncTimestamp = Date.now();
 
-    setProducts((prev) => {
-      const next = [newProduct, ...prev];
-      safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
-      if (isFirebaseConfigured()) {
-        saveCatalogBundleToCloud(next);
-        saveProductToCloud(newProduct);
-      }
-      return next;
-    });
+    const next = [newProduct, ...products];
+    setProducts(next);
+    safeSetStorage(STORAGE_KEYS.PRODUCTS, next);
+
+    if (isFirebaseConfigured()) {
+      saveCatalogBundleToCloud(next);
+      saveProductToCloud(newProduct);
+    }
     showToast(`Product "${newProduct.name}" created successfully!`, "success");
     return newProduct;
   };
