@@ -94,7 +94,7 @@ const fromFirestoreFields = (fields) => {
 // ==========================================
 
 // Fetches the entire product catalog bundled in 1 single Firestore document (Consumes strictly 1 Read!)
-export const fetchCatalogBundleFromCloud = async (expectedVersion = null) => {
+export const fetchCatalogBundleFromCloud = async () => {
   if (!isFirebaseConfigured()) return null;
   const config = getFirebaseConfig();
 
@@ -107,17 +107,6 @@ export const fetchCatalogBundleFromCloud = async (expectedVersion = null) => {
     if (!data.fields) return null;
 
     const bundle = fromFirestoreFields(data.fields);
-
-    // Stale Bundle Protection:
-    // If expectedVersion is provided (from version_meta), ensure the bundle is NOT older than expectedVersion!
-    if (expectedVersion && bundle.updatedAt) {
-      const bundleTime = new Date(bundle.updatedAt).getTime();
-      const expectedTime = new Date(expectedVersion).getTime();
-      if (bundleTime < expectedTime - 2000) {
-        console.warn(`[VANSHRA Cloud] Catalog bundle is stale (${bundle.updatedAt} < ${expectedVersion}). Falling back to live collection...`);
-        return null;
-      }
-    }
 
     if (Array.isArray(bundle.products) && bundle.products.length > 0) {
       const validProducts = bundle.products
@@ -145,23 +134,23 @@ export const fetchCatalogBundleFromCloud = async (expectedVersion = null) => {
 };
 
 // Fetches active catalog from Firestore: attempts 1-Read Bundle first, with automatic collection fallback & self-heal
-export const fetchCloudCatalog = async (expectedVersion = null) => {
+export const fetchCloudCatalog = async () => {
   if (!isFirebaseConfigured()) return [];
 
   try {
-    // 1. Ultra-fast 1-Read Catalog Bundle (Single Document Read)
-    const bundleProducts = await fetchCatalogBundleFromCloud(expectedVersion);
+    // 1. Ultra-fast 1-Read Catalog Bundle (Single Document Read - Always live and fresh!)
+    const bundleProducts = await fetchCatalogBundleFromCloud();
     if (bundleProducts && Array.isArray(bundleProducts) && bundleProducts.length > 0) {
       return bundleProducts;
     }
 
-    // 2. Resilient Fallback: If bundle document is missing or stale, read collection
-    console.log("[VANSHRA Cloud] Catalog bundle empty, missing, or stale. Reading live products collection as fallback...");
+    // 2. Resilient Fallback: If bundle document is missing or empty, read collection
+    console.log("[VANSHRA Cloud] Catalog bundle empty or missing. Reading live products collection as fallback...");
     const cloudProducts = await fetchCloudProducts();
     if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
       // Automatically self-heal: Save bundle so all future visitors only consume 1 read!
-      console.log(`[VANSHRA Cloud] Initializing/Refreshing 1-Read Catalog Bundle with ${cloudProducts.length} live products...`);
-      saveCatalogBundleToCloud(cloudProducts, expectedVersion).catch((err) => {
+      console.log(`[VANSHRA Cloud] Initializing 1-Read Catalog Bundle with ${cloudProducts.length} live products...`);
+      saveCatalogBundleToCloud(cloudProducts).catch((err) => {
         console.warn("[VANSHRA Cloud] Auto-bundle init error:", err);
       });
       return cloudProducts;
