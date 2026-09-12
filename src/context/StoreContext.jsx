@@ -729,10 +729,11 @@ export const StoreProvider = ({ children }) => {
 
       // Check lightweight version document FIRST (Consumes ONLY 1 Firestore read!)
       const versionMeta = await fetchStoreVersion();
+      const cloudVersion = versionMeta?.productsUpdatedAt || null;
 
       // If version matches and we already have products in cache, skip heavy collection read!
-      if (!force && hasLocalProducts && localVersion && versionMeta?.productsUpdatedAt) {
-        if (versionMeta.productsUpdatedAt === localVersion) {
+      if (!force && hasLocalProducts && localVersion && cloudVersion) {
+        if (cloudVersion === localVersion) {
           console.log(`[VANSHRA Cache] ✓ Catalog is up-to-date (v: ${localVersion}). Consumed only 1 Firestore read.`);
           lastProductSyncTimestamp = now;
           safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
@@ -741,9 +742,9 @@ export const StoreProvider = ({ children }) => {
       }
 
       // Catalog has changed or initial visit: Fetch full catalog & settings from Firestore
-      console.log(`[VANSHRA Cloud] Fetching live products (Cloud v: ${versionMeta?.productsUpdatedAt || "none"}, Local v: ${localVersion || "none"})...`);
+      console.log(`[VANSHRA Cloud] Fetching live products (Cloud v: ${cloudVersion || "none"}, Local v: ${localVersion || "none"})...`);
       const [cloudProducts, cloudSettings] = await Promise.all([
-        fetchCloudCatalog(),
+        fetchCloudCatalog(cloudVersion),
         fetchCloudSettings()
       ]);
 
@@ -764,7 +765,7 @@ export const StoreProvider = ({ children }) => {
 
       // Update version and sync markers
       lastProductSyncTimestamp = now;
-      const latestVer = (versionMeta && versionMeta.productsUpdatedAt) || new Date().toISOString();
+      const latestVer = cloudVersion || new Date().toISOString();
       safeSetStorage(STORAGE_KEYS.STORE_VERSION, latestVer);
       safeSetStorage(STORAGE_KEYS.LAST_PRODUCT_SYNC, String(now));
     } catch (err) {
@@ -959,7 +960,7 @@ export const StoreProvider = ({ children }) => {
     if (isFirebaseConfigured()) {
       const saved = await saveProductToCloud(newProduct);
       if (saved) {
-        saveCatalogBundleToCloud(next).catch(() => {});
+        await saveCatalogBundleToCloud(next, nowIso);
         await updateStoreVersion({ productsUpdatedAt: nowIso });
         console.log(`[VANSHRA] Product "${newProduct.name}" saved to Firestore ✓`);
       } else {
@@ -999,7 +1000,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured() && updatedProdObj) {
       await saveProductToCloud(updatedProdObj);
-      saveCatalogBundleToCloud(next).catch(() => {});
+      await saveCatalogBundleToCloud(next, nowIso);
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product updated successfully!", "success");
@@ -1015,7 +1016,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       await deleteProductFromCloud(productId);
-      saveCatalogBundleToCloud(next).catch(() => {});
+      await saveCatalogBundleToCloud(next, nowIso);
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product removed from catalog", "info");
@@ -1048,7 +1049,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured() && updatedProdObj) {
       await saveProductToCloud(updatedProdObj);
-      saveCatalogBundleToCloud(next).catch(() => {});
+      await saveCatalogBundleToCloud(next, nowIso);
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
