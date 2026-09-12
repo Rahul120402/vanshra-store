@@ -40,19 +40,22 @@ const DEMO_ORDER_IDS = new Set([
 const StoreContext = createContext();
 
 const STORAGE_KEYS = {
-  PRODUCTS: "vanshra_clothing_products_v2",
-  ORDERS: "vanshra_clothing_orders_v2",
-  SETTINGS: "vanshra_clothing_settings_v2",
+  PRODUCTS: "vanshra_clothing_products_v3",
+  ORDERS: "vanshra_clothing_orders_v3",
+  SETTINGS: "vanshra_clothing_settings_v3",
   CART: "vanshra_clothing_cart_v2",
   WISHLIST: "vanshra_clothing_wishlist_v2",
   COUPONS: "vanshra_clothing_coupons_v2",
-  LAST_PRODUCT_SYNC: "vanshra_clothing_last_sync_v2",
-  STORE_VERSION: "vanshra_clothing_version_v2",
-  ORDERS_VERSION: "vanshra_clothing_orders_ver_v2"
+  LAST_PRODUCT_SYNC: "vanshra_clothing_last_sync_v3",
+  STORE_VERSION: "vanshra_clothing_version_v3",
+  ORDERS_VERSION: "vanshra_clothing_orders_ver_v3"
 };
 
-// Clean up legacy deleted IDs blacklist from local storage
+// Clean up legacy v2 products and cache so stale device storage is instantly purged
 try {
+  localStorage.removeItem("vanshra_clothing_products_v2");
+  localStorage.removeItem("vanshra_clothing_version_v2");
+  localStorage.removeItem("vanshra_clothing_last_sync_v2");
   localStorage.removeItem("vanshra_clothing_deleted_prod_ids_v2");
   localStorage.removeItem("vanshra_clothing_deleted_ids_v2");
 } catch {
