@@ -6,8 +6,10 @@ import confetti from "canvas-confetti";
 import { 
   isFirebaseConfigured, 
   fetchCloudCatalog,
+  fetchCatalogBundleFromCloud,
   fetchCloudProducts, 
   saveProductToCloud, 
+  saveCatalogBundleToCloud,
   deleteProductFromCloud,
   fetchCloudOrders, 
   fetchCloudOrderById,
@@ -903,6 +905,34 @@ export const StoreProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAuthenticated]);
 
+  // Live Cross-Device Sync: Auto-check when visitor/admin returns to the tab or unlocks device
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncProductsWithCloud();
+        if (isAdminAuthenticated) {
+          syncOrdersWithCloud();
+        }
+      }
+    };
+
+    window.addEventListener("focus", handleFocusOrVisibility);
+    document.addEventListener("visibilitychange", handleFocusOrVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocusOrVisibility);
+      document.removeEventListener("visibilitychange", handleFocusOrVisibility);
+    };
+  }, [syncProductsWithCloud, syncOrdersWithCloud, isAdminAuthenticated]);
+
+  // Periodic Admin Orders Live Sync (Every 60s while Admin is active)
+  useEffect(() => {
+    if (!isAdminAuthenticated) return;
+    const timer = setInterval(() => {
+      syncOrdersWithCloud();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [isAdminAuthenticated, syncOrdersWithCloud]);
+
   // ==================== PRODUCT ACTIONS ====================
 
   const addProduct = async (productData) => {
@@ -929,6 +959,7 @@ export const StoreProvider = ({ children }) => {
     if (isFirebaseConfigured()) {
       const saved = await saveProductToCloud(newProduct);
       if (saved) {
+        saveCatalogBundleToCloud(next).catch(() => {});
         await updateStoreVersion({ productsUpdatedAt: nowIso });
         console.log(`[VANSHRA] Product "${newProduct.name}" saved to Firestore ✓`);
       } else {
@@ -968,6 +999,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured() && updatedProdObj) {
       await saveProductToCloud(updatedProdObj);
+      saveCatalogBundleToCloud(next).catch(() => {});
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product updated successfully!", "success");
@@ -983,6 +1015,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured()) {
       await deleteProductFromCloud(productId);
+      saveCatalogBundleToCloud(next).catch(() => {});
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast("Product removed from catalog", "info");
@@ -1015,6 +1048,7 @@ export const StoreProvider = ({ children }) => {
 
     if (isFirebaseConfigured() && updatedProdObj) {
       await saveProductToCloud(updatedProdObj);
+      saveCatalogBundleToCloud(next).catch(() => {});
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     showToast(`Updated ${sizeKey} stock to ${count}`, "success");
@@ -1350,6 +1384,7 @@ export const StoreProvider = ({ children }) => {
     // Persist decremented inventory to Cloud
     if (isFirebaseConfigured() && updatedProductsToSync.length > 0) {
       updatedProductsToSync.forEach((p) => saveProductToCloud(p));
+      saveCatalogBundleToCloud(nextProducts).catch(() => {});
     }
 
     // 2. Save order in 1 single Write
@@ -1716,6 +1751,7 @@ export const StoreProvider = ({ children }) => {
         lookupOrder,
         isSyncingProducts,
         isSyncingOrders,
+        saveCatalogBundleToCloud,
         // Toast
         toasts,
         showToast,

@@ -93,14 +93,65 @@ const fromFirestoreFields = (fields) => {
 // 1. Live Products & 1-Read Catalog Bundle Synchronization
 // ==========================================
 
-// Fetches active catalog from Firestore products collection with bundle fallback
+// Fetches the entire product catalog bundled in 1 single Firestore document (Consumes strictly 1 Read!)
+export const fetchCatalogBundleFromCloud = async () => {
+  if (!isFirebaseConfigured()) return null;
+  const config = getFirebaseConfig();
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.fields) return null;
+
+    const bundle = fromFirestoreFields(data.fields);
+    if (Array.isArray(bundle.products) && bundle.products.length > 0) {
+      const validProducts = bundle.products
+        .filter((p) => p && p.id)
+        .map((p) => {
+          if (Array.isArray(p.images)) {
+            p.images = p.images
+              .filter(Boolean)
+              .filter((img) => typeof img === "string" && !img.startsWith("data:") && (img.startsWith("http") || img.startsWith("/")));
+          }
+          return p;
+        })
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      if (validProducts.length > 0) {
+        console.log(`[VANSHRA Cloud] ✓ 1-Read Bundle loaded successfully (${validProducts.length} products). Consumed only 1 Firestore read.`);
+        return validProducts;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn("[VANSHRA Cloud] Failed to fetch catalog bundle:", err);
+    return null;
+  }
+};
+
+// Fetches active catalog from Firestore: attempts 1-Read Bundle first, with automatic collection fallback & self-heal
 export const fetchCloudCatalog = async () => {
   if (!isFirebaseConfigured()) return [];
 
   try {
-    // Fetch live products directly from the cloud products collection
+    // 1. Ultra-fast 1-Read Catalog Bundle (Single Document Read)
+    const bundleProducts = await fetchCatalogBundleFromCloud();
+    if (bundleProducts && Array.isArray(bundleProducts) && bundleProducts.length > 0) {
+      return bundleProducts;
+    }
+
+    // 2. Resilient Fallback: If bundle document does not exist yet, read collection
+    console.log("[VANSHRA Cloud] Catalog bundle empty or missing. Reading individual products collection as fallback...");
     const cloudProducts = await fetchCloudProducts();
-    if (cloudProducts && Array.isArray(cloudProducts)) {
+    if (cloudProducts && Array.isArray(cloudProducts) && cloudProducts.length > 0) {
+      // Automatically self-heal: Save bundle so all future visitors only consume 1 read!
+      console.log(`[VANSHRA Cloud] Initializing 1-Read Catalog Bundle with ${cloudProducts.length} products...`);
+      saveCatalogBundleToCloud(cloudProducts).catch((err) => {
+        console.warn("[VANSHRA Cloud] Auto-bundle init error:", err);
+      });
       return cloudProducts;
     }
     return [];
@@ -110,23 +161,48 @@ export const fetchCloudCatalog = async () => {
   }
 };
 
-// Saves the entire active catalog array in 1 single document write in Firestore (Legacy backup)
+// Saves the entire active catalog array in 1 single document in Firestore (Consumes 1 Write)
 export const saveCatalogBundleToCloud = async (products) => {
   if (!isFirebaseConfigured() || !Array.isArray(products)) return false;
   const config = getFirebaseConfig();
   const nowIso = new Date().toISOString();
 
   try {
+    // Sanitize: Strip any accidental base64 strings so bundle stays tiny (Cloudinary HTTPS URLs only)
+    const sanitizedProducts = products
+      .filter((p) => p && p.id)
+      .map((p) => {
+        const cleanImages = Array.isArray(p.images)
+          ? p.images
+              .filter(Boolean)
+              .filter((img) => typeof img === "string" && !img.startsWith("data:"))
+          : [];
+        return {
+          ...p,
+          images: cleanImages
+        };
+      });
+
     const payload = {
-      products,
+      products: sanitizedProducts,
       updatedAt: nowIso,
-      productCount: products.length
+      productCount: sanitizedProducts.length
     };
 
-    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
     const body = JSON.stringify({
       fields: toFirestoreFields(payload)
     });
+
+    const bodySizeKB = Math.round(body.length / 1024);
+    console.log(`[VANSHRA Cloud] Syncing Catalog Bundle (${sanitizedProducts.length} products, ~${bodySizeKB}KB)...`);
+
+    // Safety guard against Firestore 1MB document limit
+    if (bodySizeKB > 900) {
+      console.warn(`[VANSHRA Cloud] ⚠️ Bundle size (${bodySizeKB}KB) exceeds 900KB safety threshold. Skipping single-doc bundle to prevent Firestore error.`);
+      return false;
+    }
+
+    const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/settings/catalog_bundle?${config.apiKey ? `key=${config.apiKey}` : ""}`;
 
     const res = await fetch(url, {
       method: "PATCH",
@@ -135,6 +211,7 @@ export const saveCatalogBundleToCloud = async (products) => {
     });
 
     if (res.ok) {
+      console.log(`[VANSHRA Cloud] ✓ Catalog Bundle saved (${sanitizedProducts.length} products, ${bodySizeKB}KB).`);
       await updateStoreVersion({ productsUpdatedAt: nowIso });
     }
     return res.ok;
